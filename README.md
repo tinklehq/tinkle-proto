@@ -4,47 +4,50 @@ Public client gRPC API contracts for **Tinkle Messenger**.
 
 > **Read-only mirror.** This repository is auto-published from
 > [`tinklehq/tinkle-server`](https://github.com/tinklehq/tinkle-server)
-> under `proto/tinkle/v1/`. **Do not edit files here directly** —
-> changes will be overwritten on the next release.
+> under `proto/tinkle/`. **Do not edit files here directly** —
+> changes will be overwritten on the next publish.
+
+## Versioning
+
+API versioning is **path-based** (gRPC / buf convention):
+
+- `tinkle/v1/` — current stable package
+- `tinkle/v2/` — added side-by-side when a breaking change ships
+- Migration is by changing your import path, not by version tag
+
+There are **no SemVer tags** on this repository. Pin consumers to a
+**commit SHA** for reproducibility.
 
 ## Layout
 
 ```
-tinkle/v1/   # gRPC service contracts (account, auth, channels, ...)
-buf.yaml     # buf lint/breaking config
+          tinkle/v1/   # `tinkle.v1` package (gRPC service contracts)
+          buf.yaml     # buf lint/breaking config
 ```
 
-## Versioning
+## Consumption
 
-Tags follow SemVer (`vMAJOR.MINOR.PATCH`) and are driven by
-[Conventional Commits](https://www.conventionalcommits.org/) on the
-source monorepo:
-
-| Commit type            | Bump  |
-|------------------------|-------|
-| `feat!:` / `BREAKING CHANGE:` | major |
-| `feat:`                  | minor |
-| `fix:`                   | patch |
-
-## Consumption (Rust / libtinkle)
+### Rust (libtinkle, via `tonic-build`)
 
 ```toml
-# Cargo.toml
 [dependencies]
-tinkle-proto = { git = "ssh://git@github.com/tinklehq/tinkle-proto.git", tag = "v0.1.0" }
+tinkle-proto = { git = "ssh://git@github.com/tinklehq/tinkle-proto.git", rev = "<COMMIT_SHA>" }
 ```
 
-Or use `buf` directly:
+### Buf
 
 ```yaml
-# buf.yaml
+# buf.yaml in your client repo
 deps:
-  - github.com/tinklehq/tinkle-proto:v0.1.0
+  - github.com/tinklehq/tinkle-proto:<COMMIT_SHA>
 ```
+
+Replace `<COMMIT_SHA>` with the head of `main` (or any prior
+mirror commit you want to pin to).
 
 ## Source
 
-- Source of truth: `proto/tinkle/v1/` in
+- Source of truth: `proto/tinkle/` in
   [`tinklehq/tinkle-server`](https://github.com/tinklehq/tinkle-server)
 - Publish workflow:
   [`.github/workflows/proto-publish.yml`](https://github.com/tinklehq/tinkle-server/blob/main/.github/workflows/proto-publish.yml)
