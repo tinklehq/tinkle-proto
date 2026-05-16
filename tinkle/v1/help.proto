@@ -1,0 +1,474 @@
+// Help RPC Service - Client-Facing Aggregator Layer
+// Version: 1.0.0
+//
+// Aggregator service between rpc-gateway and core services.
+// Provides remote configuration, app metadata, app updates, legal/terms,
+// workforce user info, and region/timezone data by orchestrating
+// config-service and user-service.
+//
+// Uses data-centric method naming and intuitive message naming.
+
+syntax = "proto3";
+
+package tinkle.v1;
+
+import "tinkle/v1/common.proto";
+import "tinkle/v1/users.proto";
+
+option go_package = "github.com/tinklehq/tinkle-server/proto/tinkle/v1;tinklev1";
+
+// HelpService provides remote configuration, app metadata, and reference data operations.
+//
+// All methods require a valid JWT token with user context.
+// User ID is extracted from the token claims, not passed in requests.
+// Workforce RPCs (GetUserInfo, EditUserInfo) additionally require a workforce admin role claim.
+service HelpService {
+  // ===========================================================================
+  // Core Config Operations
+  // ===========================================================================
+
+  // GetConfig retrieves server-side operational configuration.
+  // Returns data center options, static limits, and operational parameters.
+  // This configuration changes infrequently and is not Flagsmith-backed.
+  rpc GetConfig(GetConfigQuery) returns (Config);
+
+  // ===========================================================================
+  // App Update Operations
+  // ===========================================================================
+
+  // GetUpdateInfo retrieves app update metadata for a specific platform.
+  // Returns latest version, download URL, and whether update is mandatory.
+  // Returns empty UpdateInfo (default fields) if no update data exists for the source.
+  rpc GetUpdateInfo(GetUpdateInfoQuery) returns (UpdateInfo);
+
+  // GetInviteText retrieves the current invite-a-friend sharing text.
+  // Returns a formatted string suitable for sharing via messaging apps.
+  rpc GetInviteText(GetInviteTextQuery) returns (InviteText);
+
+  // GetSupport retrieves customer support contact information.
+  // Returns support URL, email, and optional phone number.
+  rpc GetSupport(GetSupportQuery) returns (SupportInfo);
+
+  // ===========================================================================
+  // App Config and Logging Operations
+  // ===========================================================================
+
+  // GetAppConfig retrieves client-side UI/UX configuration and Flagsmith-backed
+  // feature flags. Supports hash-based caching: if the client provides a hash
+  // matching the current config, the response contains only the hash with no
+  // config data (not-modified semantics).
+  rpc GetAppConfig(GetAppConfigQuery) returns (AppConfig);
+
+  // SaveAppLog accepts a batch of client-side app events for analytics.
+  // Events are forwarded to config-service which writes them to a Kafka topic.
+  // Returns INVALID_ARGUMENT if the event list is empty or exceeds max batch size.
+  rpc SaveAppLog(SaveAppLogInput) returns (SaveAppLogResult);
+
+  // ===========================================================================
+  // Legal and Terms Operations
+  // ===========================================================================
+
+  // GetTermsOfServiceUpdate checks if the user has pending terms to accept.
+  // Returns the pending terms metadata if new terms exist, or an empty
+  // response if the user is up to date.
+  rpc GetTermsOfServiceUpdate(GetTermsOfServiceUpdateQuery) returns (TermsOfServiceUpdate);
+
+  // AcceptTermsOfService records the user's acceptance of specific terms.
+  // Idempotent: accepting already-accepted terms succeeds silently.
+  // Returns NOT_FOUND if terms_id is invalid.
+  rpc AcceptTermsOfService(AcceptTermsOfServiceInput) returns (AcceptTermsOfServiceResult);
+
+  // ===========================================================================
+  // Workforce User Info Operations (Role-Gated)
+  // ===========================================================================
+
+  // GetUserInfo retrieves user information for workforce administration.
+  // Requires workforce admin role claim in JWT token.
+  // Returns PERMISSION_DENIED if caller lacks the required role.
+  // Returns NOT_FOUND if user does not exist.
+  rpc GetUserInfo(GetUserInfoQuery) returns (WorkforceUserInfo);
+
+  // EditUserInfo updates user metadata for workforce administration.
+  // Requires workforce admin role claim in JWT token.
+  // Returns PERMISSION_DENIED if caller lacks the required role.
+  // Returns NOT_FOUND if user does not exist.
+  // Returns INVALID_ARGUMENT if message is empty.
+  rpc EditUserInfo(EditUserInfoInput) returns (WorkforceUserInfo);
+
+  // ===========================================================================
+  // Region and Timezone Operations
+  // ===========================================================================
+
+  // GetCountryList retrieves a localized list of countries.
+  // Supports hash-based caching (same pattern as GetAppConfig).
+  // Falls back to English if the requested lang_code has no translations.
+  rpc GetCountryList(GetCountryListQuery) returns (CountryList);
+
+  // GetTimezoneList retrieves the list of timezones.
+  // Supports hash-based caching (same pattern as GetAppConfig).
+  rpc GetTimezoneList(GetTimezoneListQuery) returns (TimezoneList);
+}
+
+// =============================================================================
+// Core Config Messages
+// =============================================================================
+
+// GetConfigQuery is empty — user ID from token.
+message GetConfigQuery {}
+
+// Config contains server-side operational configuration.
+message Config {
+  // Available data center options for client connection routing.
+  repeated DataCenterOption dc_options = 1;
+
+  // Configuration TTL in seconds before the client should re-fetch.
+  int32 expires = 2;
+}
+
+// DataCenterOption represents a single data center endpoint.
+message DataCenterOption {
+  // Data center identifier.
+  int32 id = 1;
+
+  // Data center IP address or hostname.
+  string ip_address = 2;
+
+  // Data center port.
+  int32 port = 3;
+}
+
+// =============================================================================
+// App Update Messages
+// =============================================================================
+
+// GetUpdateInfoQuery identifies the platform to check for updates.
+message GetUpdateInfoQuery {
+  // Platform source identifier (e.g., "ios", "macos", "googleplay", "apk", "web").
+  string source = 1;
+}
+
+// UpdateInfo contains app update metadata for a specific platform.
+message UpdateInfo {
+  // Latest available version string (semver format).
+  string version = 1;
+
+  // Download or app store URL.
+  string url = 2;
+
+  // Whether the update is mandatory (blocks app usage until updated).
+  bool mandatory = 3;
+
+  // Localized release notes in markdown format, resolved from the server-side
+  // language map using x-lang-code header with fallback: exact → base → "en".
+  string description = 4;
+}
+
+// GetInviteTextQuery is empty — returns current invite text.
+message GetInviteTextQuery {}
+
+// InviteText contains the formatted invite-a-friend sharing content.
+message InviteText {
+  // Pre-formatted invite message content.
+  string message = 1;
+}
+
+// GetSupportQuery is empty — returns current support info.
+message GetSupportQuery {}
+
+// SupportInfo contains customer support contact details.
+message SupportInfo {
+  // Support page URL.
+  string url = 1;
+
+  // Support email address.
+  string email = 2;
+
+  // Support phone number (optional, may be empty).
+  string phone = 3;
+}
+
+// =============================================================================
+// App Config Messages
+// =============================================================================
+
+// GetAppConfigQuery requests client-side configuration with optional hash for caching.
+message GetAppConfigQuery {
+  // CRC32 hash of the client's last-known config.
+  // If provided and matches current server hash, response contains only the hash
+  // with no config data (not-modified).
+  optional uint32 hash = 1;
+}
+
+// AppConfig contains client-side UI/UX configuration and feature flags.
+message AppConfig {
+  // CRC32 hash of the current configuration state.
+  uint32 hash = 1;
+
+  // Full configuration data. Absent (not set) when the request hash matches
+  // the current hash (not-modified semantics).
+  optional AppConfigData config = 2;
+}
+
+// AppConfigData contains the actual app configuration payload.
+message AppConfigData {
+  // Dynamic feature flags from Flagsmith.
+  repeated FeatureFlag features = 1;
+
+  // Static app settings (UI defaults, locale config).
+  repeated AppSetting settings = 2;
+}
+
+// FeatureFlag represents a single feature flag with its current state.
+message FeatureFlag {
+  // Feature flag identifier (e.g., "dark_mode", "new_onboarding").
+  string name = 1;
+
+  // Whether the feature is currently enabled.
+  bool enabled = 2;
+
+  // Optional feature value (JSON-encoded for complex configurations).
+  string value = 3;
+}
+
+// AppSetting represents a single static app setting.
+message AppSetting {
+  // Setting key identifier.
+  string key = 1;
+
+  // Setting value.
+  string value = 2;
+}
+
+// =============================================================================
+// App Logging Messages
+// =============================================================================
+
+// SaveAppLogInput contains a batch of client-side app events.
+message SaveAppLogInput {
+  // List of app events to log. Must be non-empty; max batch size 1000.
+  repeated AppEvent events = 1;
+}
+
+// AppEvent represents a single client-side telemetry event.
+message AppEvent {
+  // Event type identifier (e.g., "crash", "screen_view", "error").
+  string type = 1;
+
+  // Unix timestamp (seconds) when the event occurred on the client.
+  int64 timestamp = 2;
+
+  // JSON-encoded event payload with type-specific data.
+  string data = 3;
+}
+
+// SaveAppLogResult confirms event ingestion.
+message SaveAppLogResult {
+  // Number of events successfully accepted.
+  int32 accepted = 1;
+}
+
+// =============================================================================
+// Legal and Terms Messages
+// =============================================================================
+
+// GetTermsOfServiceUpdateQuery is empty — user ID from token.
+message GetTermsOfServiceUpdateQuery {}
+
+// TermsOfServiceUpdate indicates whether the user has pending terms.
+message TermsOfServiceUpdate {
+  // Pending terms to accept. Absent if user is up to date.
+  optional TermsOfService pending = 1;
+}
+
+// TermsOfService represents a specific version of the terms document.
+message TermsOfService {
+  // Unique terms version identifier (e.g., "699ba79ea0c7ef7f4ca2256a").
+  string id = 1;
+
+  // URL to the full terms document.
+  string url = 2;
+
+  // ISO 8601 date-time when the terms become effective (e.g., "2026-02-20T12:00:00.000Z").
+  string effective_date = 3;
+}
+
+// AcceptTermsOfServiceInput contains the terms version to accept.
+message AcceptTermsOfServiceInput {
+  // Terms version identifier to accept.
+  string terms_id = 1;
+}
+
+// AcceptTermsOfServiceResult confirms terms acceptance.
+message AcceptTermsOfServiceResult {
+  // True if terms were accepted (or already accepted — idempotent).
+  bool accepted = 1;
+}
+
+// =============================================================================
+// Workforce User Info Messages
+// =============================================================================
+
+// GetUserInfoQuery identifies a user for workforce info retrieval.
+message GetUserInfoQuery {
+  // Target user identifier.
+  UserInput user = 1;
+}
+
+// EditUserInfoInput contains user metadata updates for workforce admin.
+message EditUserInfoInput {
+  // Target user identifier.
+  UserInput user = 1;
+
+  // Admin-set message about the user (must be non-empty).
+  string message = 2;
+
+  // Rich-text formatting entities for the message.
+  repeated MessageEntity entities = 3;
+}
+
+// WorkforceUserInfo contains user data for workforce administration.
+message WorkforceUserInfo {
+  // Full user data (reuses tinkle.v1.User from users.proto).
+  User user = 1;
+
+  // Whether the user has active premium subscription.
+  bool premium = 2;
+
+  // Admin-set message about the user.
+  string message = 3;
+
+  // Rich-text formatting entities for the message.
+  repeated MessageEntity entities = 4;
+}
+
+// MessageEntity represents a rich-text formatting span in a message.
+message MessageEntity {
+  // Entity type.
+  MessageEntityType type = 1;
+
+  // UTF-16 offset in the text where the entity starts.
+  int32 offset = 2;
+
+  // UTF-16 length of the entity.
+  int32 length = 3;
+
+  // URL for TEXT_URL entities.
+  optional string url = 4;
+
+  // User ID for MENTION entities.
+  optional int64 user_id = 5;
+
+  // Custom emoji ID for CUSTOM_EMOJI entities.
+  optional int64 custom_emoji_id = 6;
+}
+
+// MessageEntityType identifies the type of rich-text formatting.
+enum MessageEntityType {
+  // Default/unspecified entity type.
+  MESSAGE_ENTITY_TYPE_UNSPECIFIED = 0;
+
+  // Bold text formatting.
+  MESSAGE_ENTITY_TYPE_BOLD = 1;
+
+  // Italic text formatting.
+  MESSAGE_ENTITY_TYPE_ITALIC = 2;
+
+  // Underlined text formatting.
+  MESSAGE_ENTITY_TYPE_UNDERLINE = 3;
+
+  // Strikethrough text formatting.
+  MESSAGE_ENTITY_TYPE_STRIKETHROUGH = 4;
+
+  // Monospace inline code.
+  MESSAGE_ENTITY_TYPE_CODE = 5;
+
+  // Pre-formatted code block.
+  MESSAGE_ENTITY_TYPE_PRE = 6;
+
+  // Auto-detected URL.
+  MESSAGE_ENTITY_TYPE_URL = 7;
+
+  // URL with custom display text.
+  MESSAGE_ENTITY_TYPE_TEXT_URL = 8;
+
+  // User mention (@username).
+  MESSAGE_ENTITY_TYPE_MENTION = 9;
+
+  // Custom emoji.
+  MESSAGE_ENTITY_TYPE_CUSTOM_EMOJI = 10;
+}
+
+// =============================================================================
+// Region and Timezone Messages
+// =============================================================================
+
+// GetCountryListQuery requests a localized country list with optional caching.
+message GetCountryListQuery {
+  // ISO 639-1 language code for localized country names (e.g., "en", "es", "zh").
+  string lang_code = 1;
+
+  // CRC32 hash of the client's last-known country list.
+  // If matches current hash, response contains only hash with no data.
+  optional uint32 hash = 2;
+}
+
+// CountryList contains localized country data with cache hash.
+message CountryList {
+  // CRC32 hash of the current country list.
+  uint32 hash = 1;
+
+  // Full country list. Empty when request hash matches (not-modified).
+  repeated Country countries = 2;
+
+  // Text direction for the resolved language ("ltr" or "rtl").
+  string text_direction = 3;
+}
+
+// Country represents a single country entry.
+message Country {
+  // ISO 3166-1 alpha-2 country code (e.g., "US", "GB").
+  string iso2 = 1;
+
+  // Localized country name.
+  string name = 2;
+
+  // International dialing prefix (e.g., "+1", "+44").
+  string phone_code = 3;
+
+  // Country flag emoji or image URL.
+  string flag = 4;
+}
+
+// GetTimezoneListQuery requests the timezone list with optional caching.
+message GetTimezoneListQuery {
+  // ISO 639-1 language code for localized timezone names (e.g., "en", "ja").
+  string lang_code = 1;
+
+  // CRC32 hash of the client's last-known timezone list.
+  // If matches current hash, response contains only hash with no data.
+  optional uint32 hash = 2;
+}
+
+// TimezoneList contains timezone data with cache hash.
+message TimezoneList {
+  // CRC32 hash of the current timezone list.
+  uint32 hash = 1;
+
+  // Full timezone list. Empty when request hash matches (not-modified).
+  repeated Timezone timezones = 2;
+
+  // Text direction for the resolved language ("ltr" or "rtl").
+  string text_direction = 3;
+}
+
+// Timezone represents a single timezone entry.
+message Timezone {
+  // IANA timezone identifier (e.g., "America/New_York").
+  string id = 1;
+
+  // Localized display name in the requested language.
+  string name = 2;
+
+  // ISO 3166-1 alpha-2 country code this timezone belongs to.
+  string country = 3;
+}

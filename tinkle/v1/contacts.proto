@@ -1,0 +1,225 @@
+// Contacts RPC Service - Client-Facing Aggregator Layer
+//
+// Aggregator service for contact management operations.
+// Provides contact import, list management, and blocking.
+
+syntax = "proto3";
+
+package tinkle.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+import "tinkle/v1/common.proto";
+
+option go_package = "github.com/tinklehq/tinkle-server/proto/tinkle/v1;tinklev1";
+
+// =============================================================================
+// Service Definition
+// =============================================================================
+
+// ContactsService provides contact management operations for the gateway layer.
+//
+// All methods require a valid JWT token with user context.
+// User ID is extracted from the token claims.
+service ContactsService {
+  // ImportContacts imports phone contacts from device address book.
+  // Resolves phone numbers to Tinkle users and stores for future matching.
+  // Maximum batch size: 500 contacts.
+  rpc ImportContacts(ImportContactsInput) returns (ImportedContacts);
+
+  // GetContacts retrieves the user's contact list.
+  // Supports hash-based caching for differential sync.
+  rpc GetContacts(GetContactsInput) returns (Contacts);
+
+  // GetPresences retrieves online/offline/unknown status for all caller's contacts.
+  // Delegates to presence-service GetContactsPresence; no input parameters required.
+  rpc GetPresences(google.protobuf.Empty) returns (ContactPresences);
+
+  // AddContact adds a known Tinkle user as a contact.
+  rpc AddContact(ContactInput) returns (Contact);
+
+  // DeleteContacts removes contacts by client-assigned custom ID.
+  rpc DeleteContacts(DeleteContactsInput) returns (DeleteContactsResult);
+
+  // DeleteByPhones removes contacts by phone number (non-Tinkle entries).
+  rpc DeleteByPhones(DeleteByPhonesInput) returns (google.protobuf.BoolValue);
+
+  // ResetSaved clears all non-Tinkle saved contacts.
+  rpc ResetSaved(ResetSavedInput) returns (google.protobuf.BoolValue);
+
+  // Block blocks a peer (user targets only; chat targets are not yet supported).
+  rpc Block(PeerInput) returns (google.protobuf.BoolValue);
+
+  // Unblock removes a peer from the block list.
+  rpc Unblock(PeerInput) returns (google.protobuf.BoolValue);
+
+  // GetBlocked retrieves paginated list of blocked peers.
+  rpc GetBlocked(GetBlockedInput) returns (Blocked);
+
+  // GetSaved returns all saved contacts for data export.
+  rpc GetSaved(GetSavedInput) returns (SavedContacts);
+}
+
+// =============================================================================
+// Import Contacts
+// =============================================================================
+
+// ContactInput represents a contact for add or import operations.
+message ContactInput {
+  // User to add as contact. Takes precedence over phone if both provided.
+  // At least one of user_id or phone must be specified.
+  optional int64 user_id = 1;
+  // First name to save.
+  string first_name = 2;
+  // Last name to save.
+  optional string last_name = 3;
+  // Phone number in E.164 format. Used to resolve user_id when user_id is not provided.
+  optional string phone = 4;
+  // Client-provided correlation identifier (required, max 255 chars).
+  string custom_id = 5;
+}
+
+message ImportContactsInput {
+  // List of contacts to import (max 500).
+  repeated ContactInput contacts = 1;
+}
+
+// ImportedContact represents a successfully imported contact.
+message ImportedContact {
+  // Resolved Tinkle user ID (0 if not found).
+  int64 user_id = 1;
+  // Client-provided correlation ID echoed from input.
+  string custom_id = 2;
+}
+
+// ImportedContacts is the response for ImportContacts.
+message ImportedContacts {
+  // Successfully imported and resolved contacts.
+  repeated ImportedContact imported = 1;
+  // Contacts that should be retried later (e.g., invalid phone format).
+  repeated Contact retry_contacts = 2;
+}
+
+// =============================================================================
+// Get Contacts
+// =============================================================================
+
+message GetContactsInput {
+  // Client-side hash for caching. If matches server, returns not modified.
+  int64 hash = 1;
+}
+
+// Contact represents a resolved contact with detail fields.
+message Contact {
+  // Tinkle user ID.
+  int64 user_id = 1;
+  // First name.
+  string first_name = 2;
+  // Last name.
+  string last_name = 3;
+  // Phone number in E.164 format.
+  string phone = 4;
+  // Client-provided correlation identifier.
+  string custom_id = 5;
+}
+
+// Contacts is the response for GetContacts.
+message Contacts {
+  // Contact list. Empty if hash matches (not modified).
+  repeated Contact contacts = 1;
+  // Count of saved contacts (including non-Tinkle).
+  int32 saved_count = 2;
+}
+
+// =============================================================================
+// Contact Presence
+// =============================================================================
+
+// ContactPresence represents a single contact's presence status.
+message ContactPresence {
+  // User ID.
+  int64 user_id = 1;
+  // Presence status (online, offline, or unknown).
+  UserPresence status = 2;
+}
+
+// ContactPresences is the response for GetPresences.
+message ContactPresences {
+  // Presence information for the caller's contacts.
+  repeated ContactPresence presences = 1;
+}
+
+// =============================================================================
+// Delete Contacts
+// =============================================================================
+
+// DeleteContactsInput is the request for DeleteContacts.
+message DeleteContactsInput {
+  // Client-provided custom IDs to delete from contacts.
+  repeated string custom_ids = 1;
+}
+
+// DeleteContactsResult is the response for DeleteContacts.
+message DeleteContactsResult {
+  // Whether all requested deletions succeeded.
+  bool success = 1;
+  // Number of contacts deleted successfully.
+  int32 deleted_count = 2;
+  // Custom IDs that failed to delete. Non-empty when success is false.
+  repeated string failed_custom_ids = 3;
+}
+
+message DeleteByPhonesInput {
+  // Phone numbers to delete from saved contacts.
+  repeated string phones = 1;
+}
+
+message ResetSavedInput {}
+
+// =============================================================================
+// Blocking
+// =============================================================================
+
+// GetBlockedInput is the request for GetBlocked.
+message GetBlockedInput {
+  // Pagination offset.
+  int32 offset = 1;
+  // Max results.
+  int32 limit = 2;
+}
+
+message PeerBlocked {
+  // Blocked peer ID.
+  int64 peer_id = 1;
+}
+
+// Blocked is the response for GetBlocked.
+message Blocked {
+  // List of blocked peers.
+  repeated PeerBlocked blocked = 1;
+  // Total count of blocked peers.
+  int32 count = 2;
+}
+
+// =============================================================================
+// Data Export
+// =============================================================================
+
+message GetSavedInput {}
+
+message SavedContact {
+  // Phone number.
+  string phone = 1;
+  // First name.
+  string first_name = 2;
+  // Last name.
+  string last_name = 3;
+  // When the contact was saved.
+  google.protobuf.Timestamp date = 4;
+}
+
+message SavedContacts {
+  // All saved contacts for export.
+  repeated SavedContact contacts = 1;
+}

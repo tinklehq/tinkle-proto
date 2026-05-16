@@ -1,0 +1,326 @@
+syntax = "proto3";
+
+package tinkle.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/tinklehq/tinkle-server/proto/tinkle/v1;tinklev1";
+
+// StickersService provides public-facing sticker management operations.
+// All RPCs require JWT authentication via the Authorization header.
+// The authenticated user's identity is extracted from the JWT context.
+service StickersService {
+  // ============================================================================
+  // Installed Pack Management
+  // ============================================================================
+
+  // GetInstalledPacks retrieves the authenticated user's installed sticker packs
+  // in their custom display order. Each pack includes up to 5 cover sticker previews.
+  rpc GetInstalledPacks(GetInstalledPacksRequest) returns (GetInstalledPacksResponse);
+
+  // InstallPack adds a published sticker pack to the user's collection.
+  // Idempotent: re-installing an already installed pack returns success.
+  rpc InstallPack(InstallPackRequest) returns (InstallPackResponse);
+
+  // UninstallPack removes a sticker pack from the user's installed collection.
+  // The pack moves to archived state for potential re-discovery.
+  rpc UninstallPack(UninstallPackRequest) returns (UninstallPackResponse);
+
+  // ReorderPacks sets the display order of the user's installed packs.
+  // The pack_ids list must contain exactly the set of currently installed pack IDs.
+  rpc ReorderPacks(ReorderPacksRequest) returns (ReorderPacksResponse);
+
+  // ============================================================================
+  // Pack Discovery & Details
+  // ============================================================================
+
+  // GetPack retrieves full pack details including all stickers by pack ID.
+  rpc GetPack(GetPackRequest) returns (GetPackResponse);
+
+  // GetPackByShortName retrieves full pack details by the pack's URL-friendly short name.
+  rpc GetPackByShortName(GetPackByShortNameRequest) returns (GetPackByShortNameResponse);
+
+  // SearchPacks searches for published sticker packs by keyword.
+  // Returns paginated results with pack previews.
+  rpc SearchPacks(SearchPacksRequest) returns (SearchPacksResponse);
+
+  // ============================================================================
+  // Archived Packs
+  // ============================================================================
+
+  // GetArchivedPacks retrieves packs the user previously uninstalled.
+  // Uses cursor-based pagination via offset_id.
+  rpc GetArchivedPacks(GetArchivedPacksRequest) returns (GetArchivedPacksResponse);
+
+  // ============================================================================
+  // Recent Stickers
+  // ============================================================================
+
+  // GetRecentStickers retrieves the user's recently used stickers,
+  // ordered by most recently used first. Max 200 entries.
+  rpc GetRecentStickers(GetRecentStickersRequest) returns (GetRecentStickersResponse);
+
+  // SaveRecentSticker adds a sticker to the user's recent list (or removes it if unsave=true).
+  // Adding moves the sticker to the top. LRU eviction at 200 capacity.
+  rpc SaveRecentSticker(SaveRecentStickerRequest) returns (SaveRecentStickerResponse);
+
+  // ClearRecentStickers removes all stickers from the user's recent list.
+  rpc ClearRecentStickers(ClearRecentStickersRequest) returns (ClearRecentStickersResponse);
+
+  // ============================================================================
+  // Favorite Stickers
+  // ============================================================================
+
+  // GetFavoriteStickers retrieves the user's favorited stickers. Max 100 entries.
+  rpc GetFavoriteStickers(GetFavoriteStickersRequest) returns (GetFavoriteStickersResponse);
+
+  // ToggleFavoriteSticker adds or removes a sticker from the user's favorites.
+  // Set unfave=true to remove. Hard cap of 100 favorites (RESOURCE_EXHAUSTED if exceeded).
+  rpc ToggleFavoriteSticker(ToggleFavoriteStickerRequest) returns (ToggleFavoriteStickerResponse);
+}
+
+// ============================================================================
+// Shared View Models
+// ============================================================================
+
+// StickerView is a client-facing sticker representation.
+// Clients resolve file_ids to downloadable URLs via the storage API.
+message StickerView {
+  // Unique sticker identifier.
+  int64 id = 1;
+  // Storage service reference for the main sticker image.
+  int64 file_id = 2;
+  // Storage service reference for the thumbnail image.
+  int64 thumb_file_id = 3;
+  // Whether this sticker requires a premium subscription.
+  bool is_premium = 4;
+}
+
+// StickerPackPreview is a compact pack representation for list views.
+// Includes up to 5 cover stickers for visual preview.
+message StickerPackPreview {
+  // Unique pack identifier.
+  int64 id = 1;
+  // Display name of the pack.
+  string name = 2;
+  // URL-friendly unique identifier.
+  string short_name = 3;
+  // Total number of stickers in the pack.
+  int32 sticker_count = 4;
+  // Up to 5 cover stickers for preview display.
+  repeated StickerView covers = 5;
+}
+
+// StickerPackDetail is a full pack representation with all stickers.
+message StickerPackDetail {
+  // Unique pack identifier.
+  int64 id = 1;
+  // Display name of the pack.
+  string name = 2;
+  // URL-friendly unique identifier.
+  string short_name = 3;
+  // Total number of stickers in the pack.
+  int32 sticker_count = 4;
+  // All stickers in display order.
+  repeated StickerView stickers = 5;
+  // Whether the requesting user has this pack installed.
+  bool is_installed = 6;
+}
+
+// ============================================================================
+// Installed Pack Management Messages
+// ============================================================================
+
+// GetInstalledPacksRequest retrieves the authenticated user's installed packs.
+message GetInstalledPacksRequest {}
+
+// GetInstalledPacksResponse contains the user's installed packs in display order.
+message GetInstalledPacksResponse {
+  // Installed packs in the user's custom display order.
+  repeated InstalledPackEntry packs = 1;
+}
+
+// InstalledPackEntry is a pack in the user's installed collection.
+message InstalledPackEntry {
+  // Pack preview with cover stickers.
+  StickerPackPreview pack = 1;
+  // When the user installed this pack.
+  google.protobuf.Timestamp installed_at = 2;
+}
+
+// InstallPackRequest installs a sticker pack for the authenticated user.
+message InstallPackRequest {
+  // ID of the pack to install. Must be > 0 and reference a published pack.
+  int64 pack_id = 1;
+}
+
+// InstallPackResponse contains the install operation result.
+message InstallPackResponse {
+  // Whether the operation succeeded.
+  bool success = 1;
+}
+
+// UninstallPackRequest removes a sticker pack from the user's collection.
+message UninstallPackRequest {
+  // ID of the pack to uninstall. Must be > 0.
+  int64 pack_id = 1;
+}
+
+// UninstallPackResponse contains the uninstall operation result.
+message UninstallPackResponse {
+  // Whether the operation succeeded.
+  bool success = 1;
+}
+
+// ReorderPacksRequest sets the display order of installed packs.
+message ReorderPacksRequest {
+  // Ordered list of pack IDs. Must contain exactly the set of currently installed pack IDs.
+  repeated int64 pack_ids = 1;
+}
+
+// ReorderPacksResponse contains the reorder operation result.
+message ReorderPacksResponse {
+  // Whether the operation succeeded.
+  bool success = 1;
+}
+
+// ============================================================================
+// Pack Discovery Messages
+// ============================================================================
+
+// GetPackRequest retrieves a pack by its ID.
+message GetPackRequest {
+  // ID of the pack to retrieve. Must be > 0.
+  int64 pack_id = 1;
+}
+
+// GetPackResponse contains the full pack details.
+message GetPackResponse {
+  // Full pack details including all stickers.
+  StickerPackDetail pack = 1;
+}
+
+// GetPackByShortNameRequest retrieves a pack by its URL-friendly short name.
+message GetPackByShortNameRequest {
+  // Short name of the pack (e.g., "cute-cats"). Must be non-empty.
+  string short_name = 1;
+}
+
+// GetPackByShortNameResponse contains the full pack details.
+message GetPackByShortNameResponse {
+  // Full pack details including all stickers.
+  StickerPackDetail pack = 1;
+}
+
+// SearchPacksRequest searches for published packs by keyword.
+message SearchPacksRequest {
+  // Search query string. Must be non-empty; server returns INVALID_ARGUMENT if empty.
+  string query = 1;
+  // Number of results to skip (0-based offset). Default: 0.
+  int32 offset = 2;
+  // Maximum number of results to return. Range: 1-50. Default: 20.
+  int32 limit = 3;
+}
+
+// SearchPacksResponse contains paginated search results.
+message SearchPacksResponse {
+  // Matching packs with cover previews.
+  repeated StickerPackPreview packs = 1;
+  // Total number of matching packs (for pagination UI).
+  int32 total_count = 2;
+}
+
+// ============================================================================
+// Archived Packs Messages
+// ============================================================================
+
+// GetArchivedPacksRequest retrieves packs the user previously uninstalled.
+message GetArchivedPacksRequest {
+  // Cursor for pagination: ID of the last pack from the previous page. 0 for first page.
+  int64 offset_id = 1;
+  // Maximum number of results to return. Range: 1-50. Default: 20.
+  int32 limit = 2;
+}
+
+// GetArchivedPacksResponse contains paginated archived packs.
+message GetArchivedPacksResponse {
+  // Archived packs.
+  repeated ArchivedPackEntry packs = 1;
+  // True when more pages are available beyond the current result set.
+  bool has_more = 2;
+}
+
+// ArchivedPackEntry is a pack the user previously uninstalled.
+message ArchivedPackEntry {
+  // Pack preview with cover stickers.
+  StickerPackPreview pack = 1;
+  // When the user uninstalled this pack.
+  google.protobuf.Timestamp uninstalled_at = 2;
+}
+
+// ============================================================================
+// Recent Stickers Messages
+// ============================================================================
+
+// GetRecentStickersRequest retrieves the user's recently used stickers.
+message GetRecentStickersRequest {}
+
+// GetRecentStickersResponse contains the user's recent stickers.
+message GetRecentStickersResponse {
+  // Recent stickers ordered by most recently used first. Max 200.
+  repeated StickerView stickers = 1;
+}
+
+// SaveRecentStickerRequest adds or removes a sticker from the recent list.
+message SaveRecentStickerRequest {
+  // ID of the sticker. Must be > 0.
+  int64 sticker_id = 1;
+  // If true, removes the sticker from recents instead of adding it.
+  bool unsave = 2;
+}
+
+// SaveRecentStickerResponse contains the save/unsave result.
+message SaveRecentStickerResponse {
+  // Whether the operation succeeded.
+  bool success = 1;
+}
+
+// ClearRecentStickersRequest clears all recent stickers for the user.
+message ClearRecentStickersRequest {}
+
+// ClearRecentStickersResponse contains the clear result.
+message ClearRecentStickersResponse {
+  // Whether the operation succeeded.
+  bool success = 1;
+  // Number of recent stickers that were cleared.
+  int32 cleared_count = 2;
+}
+
+// ============================================================================
+// Favorite Stickers Messages
+// ============================================================================
+
+// GetFavoriteStickersRequest retrieves the user's favorited stickers.
+message GetFavoriteStickersRequest {}
+
+// GetFavoriteStickersResponse contains the user's favorite stickers.
+message GetFavoriteStickersResponse {
+  // Favorite stickers. Max 100.
+  repeated StickerView stickers = 1;
+}
+
+// ToggleFavoriteStickerRequest adds or removes a sticker from favorites.
+message ToggleFavoriteStickerRequest {
+  // ID of the sticker. Must be > 0.
+  int64 sticker_id = 1;
+  // If true, removes the sticker from favorites instead of adding it.
+  bool unfave = 2;
+}
+
+// ToggleFavoriteStickerResponse contains the toggle result.
+message ToggleFavoriteStickerResponse {
+  // Whether the operation succeeded.
+  bool success = 1;
+  // Whether the sticker is now favorited (true) or unfavorited (false).
+  bool is_favorited = 2;
+}

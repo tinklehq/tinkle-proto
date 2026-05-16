@@ -1,0 +1,229 @@
+// Common Types - Shared Enums and Messages
+// Version: 1.0.0
+//
+// Contains common enums and messages shared across tinkle.v1 services.
+// Import this file when you need access to shared types.
+//
+// Distribution: this package is published to tinklehq/tinkle-proto on every
+// qualifying conventional-commit push to main. See proto/tinkle/v1/PUBLISHING.md.
+
+syntax = "proto3";
+
+package tinkle.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/tinklehq/tinkle-server/proto/tinkle/v1;tinklev1";
+
+// =============================================================================
+// Notification Enums
+// =============================================================================
+
+// NotificationScope identifies the type of notifications being configured.
+// Shared between client and server for consistent notification settings.
+enum NotificationScope {
+  // Default/unspecified scope.
+  NOTIFICATION_SCOPE_UNSPECIFIED = 0;
+
+  // Direct message notifications between users.
+  NOTIFICATION_SCOPE_USERS = 1;
+
+  // Group chat notifications.
+  NOTIFICATION_SCOPE_GROUPS = 2;
+
+  // Broadcast channel notifications.
+  NOTIFICATION_SCOPE_CHANNELS = 3;
+}
+
+// PushTokenType identifies the platform type for push notification tokens.
+// Shared between client and server for device registration.
+enum PushTokenType {
+  // Default/unspecified token type.
+  PUSH_TOKEN_TYPE_UNSPECIFIED = 0;
+
+  // iOS standard push notifications via Apple Push Notification Service.
+  PUSH_TOKEN_TYPE_APNS = 1;
+
+  // iOS VoIP push notifications via Apple Push Notification Service.
+  PUSH_TOKEN_TYPE_APNS_VOIP = 2;
+
+  // Android push notifications via Firebase Cloud Messaging.
+  PUSH_TOKEN_TYPE_FCM = 3;
+}
+
+// =============================================================================
+// Verification Enums
+// =============================================================================
+
+// VerificationCodeType indicates how the verification code was delivered.
+enum VerificationCodeType {
+  VERIFICATION_CODE_TYPE_UNSPECIFIED = 0;
+  VERIFICATION_CODE_TYPE_SMS = 1;
+  VERIFICATION_CODE_TYPE_PHONE_CALL = 2;
+  VERIFICATION_CODE_TYPE_EMAIL = 3;
+  VERIFICATION_CODE_TYPE_APP = 4;
+}
+
+// =============================================================================
+// Privacy Enums
+// =============================================================================
+
+// PrivacyKind represents types of privacy settings.
+enum PrivacyKind {
+  PRIVACY_KIND_UNSPECIFIED = 0;
+  PRIVACY_KIND_CALL = 1;
+  PRIVACY_KIND_PRESENCE = 2;
+  PRIVACY_KIND_PHONE_NUMBER = 3;
+  PRIVACY_KIND_ABOUT = 4;
+  PRIVACY_KIND_PROFILE_PHOTO = 5;
+  PRIVACY_KIND_CHAT_INVITE = 6;
+}
+
+// PrivacyAllowValue represents who can see user information.
+enum PrivacyAllowValue {
+  PRIVACY_ALLOW_VALUE_UNSPECIFIED = 0;
+  PRIVACY_ALLOW_VALUE_ALL = 1;
+  PRIVACY_ALLOW_VALUE_CONTACTS = 2;
+  PRIVACY_ALLOW_VALUE_NONE = 3;
+}
+
+// PrivacyRuleAction represents the action for a privacy rule exception.
+enum PrivacyRuleAction {
+  PRIVACY_RULE_ACTION_UNSPECIFIED = 0;
+  PRIVACY_RULE_ACTION_ALLOW = 1;
+  PRIVACY_RULE_ACTION_DENY = 2;
+}
+
+// =============================================================================
+// Content Enums
+// =============================================================================
+
+// ContentScope represents toggleable content types.
+enum ContentScope {
+  CONTENT_SCOPE_UNSPECIFIED = 0;
+  CONTENT_SCOPE_SENSITIVE = 1;
+}
+
+// =============================================================================
+// Shared Messages
+// =============================================================================
+
+// UserPhoto represents a user's profile photo.
+message UserPhoto {
+  // Photo file ID
+  int64 file_id = 1;
+}
+
+// User represents a user with either minimal (Empty) or full (UserData) info.
+// Returns Empty when user status is not ACTIVE.
+message User {
+  oneof user_type {
+    Empty empty = 1;
+    UserData data = 2;
+  }
+
+  // Empty contains only user ID (for non-active users)
+  message Empty {
+    int64 id = 1;
+  }
+
+  // UserData contains full user information
+  message UserData {
+    int64 id = 1;
+    optional string phone_number = 2;
+    optional string username = 3;
+    optional UserPhoto photo = 4;
+    optional string name = 5;
+    optional string about = 6;
+    optional bool verified = 7;
+    optional bool premium = 8;
+    optional bool fake = 9;
+    optional bool scam = 10;
+    optional bool bot = 11;
+    optional bool deleted = 12;
+  }
+}
+
+// PeerInput specifies a peer target using either user_id or chat_id.
+// The type is implicitly determined by which field is set (oneof).
+message PeerInput {
+  oneof target {
+    // User ID for direct message targets
+    int64 user_id = 1;
+    // Chat ID for group/channel targets
+    int64 chat_id = 2;
+  }
+}
+
+// =============================================================================
+// Presence Messages
+// =============================================================================
+
+// UserPresence represents a user's online/offline/unknown presence.
+// Used for public-facing presence information in contact lists.
+message UserPresence {
+  oneof status {
+    // User is currently online
+    OnlineStatus online = 1;
+    // User is offline with optional last seen time
+    OfflineStatus offline = 2;
+    // Presence unknown (user never seen or no record exists)
+    EmptyStatus empty = 3;
+  }
+}
+
+// OnlineStatus indicates the user is currently online.
+message OnlineStatus {}
+
+// OfflineStatus indicates the user is offline.
+message OfflineStatus {
+  // When the user was last seen online.
+  google.protobuf.Timestamp last_seen = 1;
+}
+
+// EmptyStatus indicates presence is unknown (user has never been seen).
+message EmptyStatus {}
+
+// =============================================================================
+// Admin Rights
+// =============================================================================
+
+// ChatAdminScopes represents granular admin permission scopes for chats and channels.
+// Used across bot management, channel admin, and bot API services.
+message ChatAdminScopes {
+  // Change chat title, photo, and settings.
+  bool change_info = 1;
+  // Post messages in channels.
+  bool post_messages = 2;
+  // Edit other users' messages in channels.
+  bool edit_messages = 3;
+  // Delete other users' messages.
+  bool delete_messages = 4;
+  // Restrict, ban, or unban participants.
+  bool manage_participants = 5;
+  // Invite users to the chat.
+  bool invite_users = 6;
+  // Pin messages.
+  bool pin_messages = 7;
+  // Manage forum topics.
+  bool manage_topics = 8;
+  // Add new admins with a subset of own permissions.
+  bool promote_participants = 9;
+  // Manage the chat (general admin access).
+  bool manage_chat = 10;
+  // Manage video chats.
+  bool manage_video_chats = 11;
+  // Admin actions are anonymous.
+  bool anonymous = 12;
+}
+
+// Deprecated: Use UserPresence instead. This alias is kept for backward compatibility
+// with external proto consumers. Migrate to UserPresence which has the same structure.
+message PresenceStatus {
+  option deprecated = true;
+  oneof status {
+    OnlineStatus online = 1;
+    OfflineStatus offline = 2;
+    EmptyStatus empty = 3;
+  }
+}

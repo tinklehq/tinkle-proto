@@ -1,0 +1,1097 @@
+// Messages gRPC service contract for client-facing messaging operations.
+// This file is a design artifact. The production proto will live at
+// proto/tinkle/v1/messages.proto.
+syntax = "proto3";
+
+package tinkle.v1;
+
+import "google/protobuf/timestamp.proto";
+import "tinkle/v1/common.proto";
+
+option go_package = "github.com/tinklehq/tinkle-server/proto/tinkle/v1;tinklev1";
+
+// MessagesService provides client-facing messaging operations.
+// All methods require a valid JWT token; user_id is extracted from token claims.
+service MessagesService {
+  // ---- Dialog & History (5 RPCs) ----
+
+  // GetDialogs returns the authenticated user's dialog list.
+  rpc GetDialogs(DialogQuery) returns (DialogList);
+  // GetHistory returns message history for a conversation with cursor-based pagination.
+  rpc GetHistory(HistoryQuery) returns (MessageHistory);
+  // ReadHistory marks messages as read up to a specified message_id.
+  rpc ReadHistory(HistoryReadMark) returns (ReadReceipt);
+  // DeleteHistory deletes conversation history with optional bilateral revocation.
+  rpc DeleteHistory(HistoryDeletion) returns (AffectedHistory);
+  // DeleteMessages deletes specific messages by ID.
+  rpc DeleteMessages(MessageDeletion) returns (AffectedMessages);
+
+  // ---- Chat Creation & Structure (6 RPCs) ----
+
+  // CreateChat creates a new group chat with initial participants.
+  rpc CreateChat(NewChat) returns (CreatedChat);
+  // EditChatTitle updates a chat's title.
+  rpc EditChatTitle(ChatTitleEdit) returns (ChatTitleUpdated);
+  // EditChatPhoto updates or removes a chat's photo.
+  rpc EditChatPhoto(ChatPhotoEdit) returns (ChatPhotoUpdated);
+  // EditChatAbout updates a chat's description.
+  rpc EditChatAbout(ChatAboutEdit) returns (ChatAboutUpdated);
+  // GetChats returns basic info for multiple chats by ID.
+  rpc GetChats(ChatLookup) returns (Chats);
+  // GetChatComplete returns full chat details including participants, admins, and invite links.
+  rpc GetChatComplete(ChatDetailQuery) returns (ChatDetail);
+
+  // ---- Participants & Scopes (4 RPCs) ----
+
+  // AddChatParticipant adds a user to a group chat.
+  rpc AddChatParticipant(ParticipantAddition) returns (ParticipantAdded);
+  // RemoveChatParticipant removes a user from a group chat.
+  rpc RemoveChatParticipant(ParticipantRemoval) returns (ParticipantRemoved);
+  // EditChatAdmin promotes or demotes a chat admin.
+  rpc EditChatAdmin(AdminEdit) returns (AdminUpdated);
+  // EditChatRestrictedScopes applies restricted permissions to a user in a chat.
+  rpc EditChatRestrictedScopes(ScopesEdit) returns (ScopesUpdated);
+
+  // ---- TTL, Pinned, Scheduled (3 RPCs) ----
+
+  // SetHistoryTTL configures auto-delete timer for a conversation.
+  rpc SetHistoryTTL(HistoryTTL) returns (TTLUpdated);
+  // UpdatePinnedMessage pins or unpins a message in a conversation.
+  rpc UpdatePinnedMessage(PinAction) returns (PinUpdated);
+  // UnpinAllMessages unpins all messages in a conversation or thread.
+  rpc UnpinAllMessages(UnpinAllAction) returns (UnpinSummary);
+
+  // ---- Sending & Editing (6 RPCs) ----
+
+  // SendMessage sends a text message to a conversation.
+  rpc SendMessage(OutgoingMessage) returns (SentMessage);
+  // SendMedia sends a media message (photo, document, geo, contact, poll).
+  rpc SendMedia(OutgoingMedia) returns (SentMedia);
+  // SendMultiMedia sends an album of multiple media items.
+  rpc SendMultiMedia(OutgoingMultiMedia) returns (SentMultiMedia);
+  // EditMessage edits an existing message's content or media.
+  rpc EditMessage(MessageEdit) returns (EditedMessage);
+  // SetTyping broadcasts a typing indicator to conversation participants.
+  rpc SetTyping(TypingIndicator) returns (TypingAck);
+  // SendStartBot starts a bot interaction with a start parameter.
+  rpc SendStartBot(BotStart) returns (BotResponse);
+
+  // ---- Search (1 RPC) ----
+
+  // Search searches messages within a conversation or globally.
+  rpc Search(SearchQuery) returns (SearchResults);
+
+  // ---- Reactions (7 RPCs) ----
+
+  // GetMessagesReactions returns reaction summaries for multiple messages.
+  rpc GetMessagesReactions(ReactionsQuery) returns (MessagesReactions);
+  // GetMessageReactionsList returns individual reactors for a message.
+  rpc GetMessageReactionsList(ReactionListQuery) returns (ReactionList);
+  // SendReaction adds or removes reactions on a message.
+  rpc SendReaction(ReactionToggle) returns (ReactionUpdate);
+  // GetUnreadMentions returns messages mentioning the authenticated user.
+  rpc GetUnreadMentions(UnreadMentionsQuery) returns (UnreadMentions);
+  // ReadMentions marks all mentions in a conversation as read.
+  rpc ReadMentions(MentionsReadMark) returns (MentionsReadReceipt);
+  // GetUnreadReactions returns messages with new reactions for the authenticated user.
+  rpc GetUnreadReactions(UnreadReactionsQuery) returns (UnreadReactions);
+  // ReadReactions marks all reactions in a conversation as read.
+  rpc ReadReactions(ReactionsReadMark) returns (ReactionsReadReceipt);
+
+  // ---- Polls & Votes (3 RPCs) ----
+
+  // SendVote records or retracts a vote on a poll.
+  rpc SendVote(VoteSubmission) returns (VoteUpdate);
+  // GetPollVotes returns per-option voter lists with pagination.
+  rpc GetPollVotes(PollVotesQuery) returns (PollVoters);
+  // GetPollResults returns current poll results.
+  rpc GetPollResults(PollResultsQuery) returns (PollResults);
+
+  // ---- Threaded (2 RPCs) ----
+
+  // ReadThread marks thread messages as read up to a specified ID.
+  rpc ReadThread(ThreadReadMark) returns (ThreadReadReceipt);
+  // GetThreadMessage returns thread replies with pagination.
+  rpc GetThreadMessage(ThreadQuery) returns (ThreadMessages);
+}
+
+// =============================================================================
+// Enums
+// =============================================================================
+
+// ChatType describes the type of a chat.
+enum ChatType {
+  CHAT_TYPE_UNSPECIFIED = 0;
+  CHAT_TYPE_GROUP = 1;
+  CHAT_TYPE_CHANNEL = 2;
+  CHAT_TYPE_BROADCAST = 3;
+}
+
+// MessageTextEntityType describes the type of a rich text formatting span in a message.
+enum MessageTextEntityType {
+  MESSAGE_TEXT_ENTITY_TYPE_UNSPECIFIED = 0;
+  MESSAGE_TEXT_ENTITY_TYPE_BOLD = 1;
+  MESSAGE_TEXT_ENTITY_TYPE_ITALIC = 2;
+  MESSAGE_TEXT_ENTITY_TYPE_UNDERLINE = 3;
+  MESSAGE_TEXT_ENTITY_TYPE_STRIKETHROUGH = 4;
+  MESSAGE_TEXT_ENTITY_TYPE_CODE = 5;
+  MESSAGE_TEXT_ENTITY_TYPE_PRE = 6;
+  MESSAGE_TEXT_ENTITY_TYPE_URL = 7;
+  MESSAGE_TEXT_ENTITY_TYPE_TEXT_URL = 8;
+  MESSAGE_TEXT_ENTITY_TYPE_MENTION = 9;
+  MESSAGE_TEXT_ENTITY_TYPE_MENTION_NAME = 10;
+  MESSAGE_TEXT_ENTITY_TYPE_PHONE = 11;
+  MESSAGE_TEXT_ENTITY_TYPE_EMAIL = 12;
+  MESSAGE_TEXT_ENTITY_TYPE_HASHTAG = 13;
+  MESSAGE_TEXT_ENTITY_TYPE_CASHTAG = 14;
+  MESSAGE_TEXT_ENTITY_TYPE_BOT_COMMAND = 15;
+  MESSAGE_TEXT_ENTITY_TYPE_CUSTOM_EMOJI = 16;
+  MESSAGE_TEXT_ENTITY_TYPE_SPOILER = 17;
+  MESSAGE_TEXT_ENTITY_TYPE_BLOCKQUOTE = 18;
+}
+
+// MessagesFilter filters search results by content type.
+enum MessagesFilter {
+  MESSAGES_FILTER_UNSPECIFIED = 0;
+  MESSAGES_FILTER_PHOTOS = 1;
+  MESSAGES_FILTER_VIDEO = 2;
+  MESSAGES_FILTER_PHOTO_VIDEO = 3;
+  MESSAGES_FILTER_DOCUMENT = 4;
+  MESSAGES_FILTER_URL = 5;
+  MESSAGES_FILTER_GIF = 6;
+  MESSAGES_FILTER_VOICE = 7;
+  MESSAGES_FILTER_MUSIC = 8;
+  MESSAGES_FILTER_ROUND_VIDEO = 9;
+  MESSAGES_FILTER_PINNED = 10;
+  MESSAGES_FILTER_MENTIONS = 11;
+}
+
+// TypingAction describes the type of typing indicator.
+enum TypingAction {
+  TYPING_ACTION_UNSPECIFIED = 0;
+  TYPING_ACTION_TYPING = 1;
+  TYPING_ACTION_RECORD_AUDIO = 2;
+  TYPING_ACTION_UPLOAD_PHOTO = 3;
+  TYPING_ACTION_UPLOAD_DOCUMENT = 4;
+  TYPING_ACTION_RECORD_VIDEO = 5;
+  TYPING_ACTION_UPLOAD_VIDEO = 6;
+  TYPING_ACTION_RECORD_ROUND = 7;
+  TYPING_ACTION_UPLOAD_ROUND = 8;
+  TYPING_ACTION_CHOOSE_STICKER = 9;
+  TYPING_ACTION_CANCEL = 10;
+}
+
+// ChatRestrictedScope describes actions that can be restricted for participants.
+enum ChatRestrictedScope {
+  CHAT_RESTRICTED_SCOPE_UNSPECIFIED = 0;
+  CHAT_RESTRICTED_SCOPE_VIEW_MESSAGE = 1;
+  CHAT_RESTRICTED_SCOPE_SEND_MESSAGE = 2;
+  CHAT_RESTRICTED_SCOPE_SEND_MEDIA = 3;
+  CHAT_RESTRICTED_SCOPE_SEND_STICKERS = 4;
+  CHAT_RESTRICTED_SCOPE_SEND_GIFS = 5;
+  CHAT_RESTRICTED_SCOPE_SEND_GAMES = 6;
+  CHAT_RESTRICTED_SCOPE_SEND_INLINE = 7;
+  CHAT_RESTRICTED_SCOPE_EMBED_LINKS = 8;
+  CHAT_RESTRICTED_SCOPE_SEND_POLLS = 9;
+  CHAT_RESTRICTED_SCOPE_CHANGE_INFO = 10;
+  CHAT_RESTRICTED_SCOPE_INVITE_USERS = 11;
+  CHAT_RESTRICTED_SCOPE_PIN_MESSAGES = 12;
+}
+
+// =============================================================================
+// Core entity messages
+// =============================================================================
+
+// Dialog represents a conversation entry in the user's dialog list.
+message Dialog {
+  PeerInput peer = 1;
+  int64 top_message = 2;
+  int32 unread_count = 3;
+  int64 read_inbox_max_id = 4;
+  int64 read_outbox_max_id = 5;
+  bool pinned = 6;
+  int64 space_id = 7;
+  DraftMessage draft = 8;
+}
+
+// DraftMessage represents an unsent draft in a dialog.
+message DraftMessage {
+  string message = 1;
+  repeated MessageTextEntity entities = 2;
+  int64 reply_to_msg_id = 3;
+  google.protobuf.Timestamp date = 4;
+}
+
+// Message represents a single message in a conversation.
+message Message {
+  int64 message_id = 1;
+  PeerInput peer = 2;
+  int64 from_id = 3;
+  google.protobuf.Timestamp date = 4;
+  string message = 5;
+  Media media = 6;
+  repeated MessageTextEntity entities = 7;
+  MessageReplyHeader reply_to = 8;
+  google.protobuf.Timestamp edit_date = 9;
+  MessageReactions reactions = 10;
+  MessageReplies replies = 11;
+  bool pinned = 12;
+  int32 ttl_period = 13;
+}
+
+// MessageReplyHeader contains reply context for a message.
+message MessageReplyHeader {
+  int64 reply_to_msg_id = 1;
+  int64 reply_to_peer_id = 2;
+  int64 reply_to_top_id = 3;
+  string quote_text = 4;
+  repeated MessageTextEntity quote_entities = 5;
+}
+
+// MessageReplies contains thread reply summary for a message.
+message MessageReplies {
+  int32 replies = 1;
+  int64 max_id = 2;
+  int64 read_max_id = 3;
+  repeated int64 recent_replier_ids = 4;
+}
+
+// Chat represents a group or channel entity.
+message Chat {
+  int64 chat_id = 1;
+  string title = 2;
+  ChatPhoto photo = 3;
+  string about = 4;
+  ChatType chat_type = 5;
+  int32 participants_count = 6;
+  google.protobuf.Timestamp date = 7;
+  int64 owner_id = 8;
+}
+
+// ChatPhoto represents a chat's photo.
+message ChatPhoto {
+  int64 photo_id = 1;
+  bool has_video = 2;
+}
+
+// ChatComplete contains full chat details.
+message ChatComplete {
+  Chat chat = 1;
+  repeated Participant participants = 2;
+  repeated Participant admins = 3;
+  repeated InviteLink invite_links = 4;
+  repeated RestrictedUser restricted_users = 5;
+  int32 ttl_period = 6;
+}
+
+// Participant represents a chat member.
+message Participant {
+  int64 user_id = 1;
+  bool is_admin = 2;
+  google.protobuf.Timestamp joined_at = 3;
+}
+
+// InviteLink represents a chat invite link.
+message InviteLink {
+  string link = 1;
+  int64 admin_id = 2;
+  google.protobuf.Timestamp date = 3;
+  bool is_permanent = 4;
+  bool is_revoked = 5;
+  int32 usage_count = 6;
+  optional int32 usage_limit = 7;
+  optional google.protobuf.Timestamp expire_date = 8;
+}
+
+// RestrictedUser represents a user with restricted scopes.
+message RestrictedUser {
+  int64 user_id = 1;
+  repeated ChatRestrictedScope restricted_scopes = 2;
+  optional google.protobuf.Timestamp until_date = 3;
+}
+
+// MessageTextEntity represents a rich text formatting span in a message.
+message MessageTextEntity {
+  MessageTextEntityType type = 1;
+  int32 offset = 2;
+  int32 length = 3;
+  string url = 4;
+  int64 user_id = 5;
+  string language = 6;
+  int64 document_id = 7;
+}
+
+// Reaction represents an emoji reaction.
+message Reaction {
+  string emoticon = 1;
+  int64 document_id = 2;
+}
+
+// MessageReactions contains per-message reaction summary.
+message MessageReactions {
+  int64 message_id = 1;
+  repeated ReactionCount results = 2;
+  repeated PeerReaction recent_reactions = 3;
+}
+
+// ReactionCount contains count for a single reaction type.
+message ReactionCount {
+  Reaction reaction = 1;
+  int32 count = 2;
+  bool chosen = 3;
+}
+
+// PeerReaction represents a single user's reaction.
+message PeerReaction {
+  int64 peer_id = 1;
+  Reaction reaction = 2;
+  google.protobuf.Timestamp date = 3;
+}
+
+// Media represents an attached media item on a message.
+message Media {
+  oneof media {
+    Photo photo = 1;
+    Document document = 2;
+    GeoPoint geo = 3;
+    MessageContact contact = 4;
+    Poll poll = 5;
+  }
+}
+
+// Photo represents a photo attachment.
+message Photo {
+  int64 id = 1;
+  int64 access_hash = 2;
+  int32 width = 3;
+  int32 height = 4;
+}
+
+// Document represents a file/document attachment.
+message Document {
+  int64 id = 1;
+  int64 access_hash = 2;
+  string mime_type = 3;
+  int64 size = 4;
+  string file_name = 5;
+}
+
+// GeoPoint represents a geographic location.
+message GeoPoint {
+  double lat = 1;
+  double long = 2;
+}
+
+// MessageContact represents a contact card attached to a message.
+message MessageContact {
+  string phone_number = 1;
+  string first_name = 2;
+  string last_name = 3;
+  int64 user_id = 4;
+}
+
+// Poll represents a poll attached to a message.
+message Poll {
+  int64 id = 1;
+  string question = 2;
+  repeated PollAnswer answers = 3;
+  bool closed = 4;
+  bool public_voters = 5;
+  bool multiple_choice = 6;
+  bool quiz = 7;
+}
+
+// PollAnswer represents a single poll option.
+message PollAnswer {
+  string text = 1;
+  bytes option = 2;
+}
+
+// PollVoter represents a user's vote record.
+message PollVoter {
+  int64 user_id = 1;
+  repeated bytes options = 2;
+  google.protobuf.Timestamp date = 3;
+}
+
+// MissingInvitee represents a user that could not be invited.
+message MissingInvitee {
+  int64 user_id = 1;
+  string reason = 2;
+}
+
+// =============================================================================
+// Input types for media/reply (used by send operations)
+// =============================================================================
+
+// MediaInput represents a media attachment for sending.
+message MediaInput {
+  oneof media {
+    InputPhoto photo = 1;
+    InputDocument document = 2;
+    InputGeoPoint geo = 3;
+    InputMessageContact contact = 4;
+    InputPoll poll = 5;
+  }
+}
+
+// InputPhoto references an existing photo by file_id.
+message InputPhoto {
+  int64 file_id = 1;
+}
+
+// InputDocument references an existing document by file_id.
+message InputDocument {
+  int64 file_id = 1;
+}
+
+// InputGeoPoint represents geographic coordinates for sending.
+message InputGeoPoint {
+  double lat = 1;
+  double long = 2;
+}
+
+// InputMessageContact represents a contact card for sending.
+message InputMessageContact {
+  string phone_number = 1;
+  string first_name = 2;
+  string last_name = 3;
+  int64 user_id = 4;
+}
+
+// InputPoll represents a poll definition for sending.
+message InputPoll {
+  string question = 1;
+  repeated PollAnswer answers = 2;
+  bool public_voters = 3;
+  bool multiple_choice = 4;
+  bool quiz = 5;
+  optional int32 close_period = 6;
+  optional google.protobuf.Timestamp close_date = 7;
+}
+
+// ReplyInput represents reply context for send operations.
+message ReplyInput {
+  int64 reply_to_msg_id = 1;
+  string quote_text = 2;
+  repeated MessageTextEntity quote_entities = 3;
+}
+
+// PhotoInput represents a photo reference for chat photo operations.
+message PhotoInput {
+  oneof input {
+    int64 file_id = 1;
+    bool empty = 2;
+  }
+}
+
+// SingleMediaInput represents a single item in a multi-media album.
+message SingleMediaInput {
+  MediaInput media = 1;
+  string message = 2;
+  repeated MessageTextEntity entities = 3;
+  int64 random_id = 4;
+}
+
+// =============================================================================
+// Dialog & History RPC messages
+// =============================================================================
+
+// DialogQuery is the request for GetDialogs.
+// Supports cursor-based pagination and conditional fetching via hash.
+message DialogQuery {
+  // space_id filters dialogs to a specific workspace/space. Omit to retrieve all.
+  optional int64 space_id = 1;
+  // offset_date is a Unix epoch timestamp (seconds) of the last dialog's top message date.
+  // Used for cursor pagination: the server returns dialogs older than this date.
+  // Omit or set to 0 for the first page.
+  optional int32 offset_date = 2;
+  // offset_peer_id is the peer ID of the last dialog on the previous page.
+  // Used together with offset_date for stable cursor pagination when multiple
+  // dialogs share the same date.
+  optional int64 offset_peer_id = 3;
+  // limit is the maximum number of dialogs to return. Valid range: 1–100.
+  // If omitted, the server uses a default (typically 20).
+  optional int32 limit = 4;
+  // hash is a client-computed checksum of the previously received dialog list.
+  // If the server's current hash matches, it returns an empty response (unchanged).
+  // Compute as: XOR of all (dialog.peer_id * 0x2491 + dialog.top_message) values.
+  // Set to 0 to always receive the full list.
+  int64 hash = 5;
+}
+
+// DialogList is the response for GetDialogs.
+message DialogList {
+  repeated Dialog dialogs = 1;
+  repeated Message messages = 2;
+  repeated User users = 3;
+  repeated Chat chats = 4;
+}
+
+// HistoryQuery is the request for GetHistory.
+// Supports bidirectional cursor pagination within a conversation.
+message HistoryQuery {
+  // peer identifies the conversation to fetch history from (required).
+  PeerInput peer = 1;
+  // offset_id is the message ID to start pagination from.
+  // The server returns messages around this ID based on add_offset and limit.
+  optional int64 offset_id = 2;
+  // offset_date is a Unix epoch timestamp (seconds). When set, the server
+  // returns messages sent before this date. Mutually exclusive with offset_id.
+  optional int32 offset_date = 3;
+  // add_offset shifts the result window relative to offset_id.
+  // Negative values fetch messages newer than offset_id;
+  // positive values fetch older messages. Example: add_offset=-20 with
+  // limit=20 fetches the 20 messages after offset_id.
+  int32 add_offset = 4;
+  // limit is the maximum number of messages to return. Valid range: 1–100.
+  int32 limit = 5;
+  // max_id returns only messages with IDs less than or equal to this value.
+  // Used to define the upper bound of the result window.
+  optional int64 max_id = 6;
+  // min_id returns only messages with IDs greater than or equal to this value.
+  // Used to define the lower bound of the result window.
+  optional int64 min_id = 7;
+}
+
+// MessageHistory is the response for GetHistory.
+message MessageHistory {
+  repeated Message messages = 1;
+  repeated User users = 2;
+  repeated Chat chats = 3;
+  int32 count = 4;
+  optional int64 offset_id_offset = 5;
+}
+
+// HistoryReadMark is the request for ReadHistory.
+message HistoryReadMark {
+  PeerInput peer = 1;
+  int64 max_id = 2;
+}
+
+// ReadReceipt is the response for ReadHistory.
+message ReadReceipt {
+  bool success = 1;
+}
+
+// HistoryDeletion is the request for DeleteHistory.
+message HistoryDeletion {
+  PeerInput peer = 1;
+  int64 max_id = 2;
+  optional bool revoke = 3;
+  optional int32 min_date = 4;
+  optional int32 max_date = 5;
+}
+
+// AffectedHistory is the response for DeleteHistory.
+message AffectedHistory {
+  bool success = 1;
+  int32 offset = 2;
+}
+
+// MessageDeletion is the request for DeleteMessages.
+message MessageDeletion {
+  PeerInput peer = 1;
+  repeated int64 message_ids = 2;
+  optional bool revoke = 3;
+}
+
+// AffectedMessages is the response for DeleteMessages.
+message AffectedMessages {
+  int32 deleted_count = 1;
+}
+
+// =============================================================================
+// Chat Creation & Structure RPC messages
+// =============================================================================
+
+// NewChat is the request for CreateChat.
+message NewChat {
+  string title = 1;
+  repeated int64 user_ids = 2;
+  optional int32 ttl_period = 3;
+}
+
+// CreatedChat is the response for CreateChat.
+message CreatedChat {
+  Chat chat = 1;
+  repeated User users = 2;
+  repeated MissingInvitee missing = 3;
+}
+
+// ChatTitleEdit is the request for EditChatTitle.
+message ChatTitleEdit {
+  int64 chat_id = 1;
+  string title = 2;
+}
+
+// ChatTitleUpdated is the response for EditChatTitle.
+message ChatTitleUpdated {
+  bool success = 1;
+}
+
+// ChatPhotoEdit is the request for EditChatPhoto.
+message ChatPhotoEdit {
+  int64 chat_id = 1;
+  PhotoInput photo = 2;
+}
+
+// ChatPhotoUpdated is the response for EditChatPhoto.
+message ChatPhotoUpdated {
+  bool success = 1;
+}
+
+// ChatAboutEdit is the request for EditChatAbout.
+message ChatAboutEdit {
+  int64 chat_id = 1;
+  string about = 2;
+}
+
+// ChatAboutUpdated is the response for EditChatAbout.
+message ChatAboutUpdated {
+  bool success = 1;
+}
+
+// ChatLookup is the request for GetChats.
+message ChatLookup {
+  repeated int64 chat_ids = 1;
+}
+
+// Chats is the response for GetChats.
+message Chats {
+  repeated Chat chats = 1;
+}
+
+// ChatDetailQuery is the request for GetChatComplete.
+message ChatDetailQuery {
+  int64 chat_id = 1;
+}
+
+// ChatDetail is the response for GetChatComplete.
+message ChatDetail {
+  ChatComplete chat_complete = 1;
+}
+
+// =============================================================================
+// Participants & Scopes RPC messages
+// =============================================================================
+
+// ParticipantAddition is the request for AddChatParticipant.
+message ParticipantAddition {
+  int64 chat_id = 1;
+  int64 user_id = 2;
+  int32 forward_limit = 3;
+}
+
+// ParticipantAdded is the response for AddChatParticipant.
+message ParticipantAdded {
+  repeated MissingInvitee missing = 1;
+  repeated User users = 2;
+}
+
+// ParticipantRemoval is the request for RemoveChatParticipant.
+message ParticipantRemoval {
+  int64 chat_id = 1;
+  int64 user_id = 2;
+}
+
+// ParticipantRemoved is the response for RemoveChatParticipant.
+message ParticipantRemoved {
+  bool success = 1;
+}
+
+// AdminEdit is the request for EditChatAdmin.
+message AdminEdit {
+  int64 chat_id = 1;
+  int64 user_id = 2;
+  bool is_admin = 3;
+}
+
+// AdminUpdated is the response for EditChatAdmin.
+message AdminUpdated {
+  bool success = 1;
+}
+
+// ScopesEdit is the request for EditChatRestrictedScopes.
+message ScopesEdit {
+  int64 chat_id = 1;
+  int64 user_id = 2;
+  repeated ChatRestrictedScope restricted_scopes = 3;
+  optional google.protobuf.Timestamp until_date = 4;
+}
+
+// ScopesUpdated is the response for EditChatRestrictedScopes.
+message ScopesUpdated {
+  bool success = 1;
+}
+
+// =============================================================================
+// TTL, Pinned, Scheduled RPC messages
+// =============================================================================
+
+// HistoryTTL is the request for SetHistoryTTL.
+message HistoryTTL {
+  PeerInput peer = 1;
+  int32 period = 2;
+}
+
+// TTLUpdated is the response for SetHistoryTTL.
+message TTLUpdated {
+  bool success = 1;
+}
+
+// PinAction is the request for UpdatePinnedMessage.
+message PinAction {
+  PeerInput peer = 1;
+  int64 message_id = 2;
+  optional bool silent = 3;
+  optional bool unpin = 4;
+  optional bool pm_oneside = 5;
+}
+
+// PinUpdated is the response for UpdatePinnedMessage.
+message PinUpdated {
+  bool success = 1;
+}
+
+// UnpinAllAction is the request for UnpinAllMessages.
+message UnpinAllAction {
+  PeerInput peer = 1;
+  optional int64 top_msg_id = 2;
+}
+
+// UnpinSummary is the response for UnpinAllMessages.
+message UnpinSummary {
+  int32 unpinned_count = 1;
+}
+
+// =============================================================================
+// Sending & Editing RPC messages
+// =============================================================================
+
+// OutgoingMessage is the request for SendMessage.
+message OutgoingMessage {
+  PeerInput peer = 1;
+  string message = 2;
+  int64 random_id = 3;
+  optional ReplyInput reply_to = 4;
+  optional bool silent = 5;
+  optional bool no_forward = 6;
+  optional bool clear_draft = 7;
+  repeated MessageTextEntity entities = 8;
+  optional int32 schedule_date = 9;
+}
+
+// SentMessage is the response for SendMessage.
+message SentMessage {
+  Message message = 1;
+  repeated User users = 2;
+  repeated Chat chats = 3;
+}
+
+// OutgoingMedia is the request for SendMedia.
+message OutgoingMedia {
+  PeerInput peer = 1;
+  MediaInput media = 2;
+  optional string message = 3;
+  int64 random_id = 4;
+  optional ReplyInput reply_to = 5;
+  optional bool silent = 6;
+  optional bool no_forward = 7;
+  optional bool clear_draft = 8;
+  repeated MessageTextEntity entities = 9;
+  optional int32 schedule_date = 10;
+}
+
+// SentMedia is the response for SendMedia.
+message SentMedia {
+  Message message = 1;
+  repeated User users = 2;
+  repeated Chat chats = 3;
+}
+
+// OutgoingMultiMedia is the request for SendMultiMedia.
+message OutgoingMultiMedia {
+  PeerInput peer = 1;
+  repeated SingleMediaInput multi_media = 2;
+  optional ReplyInput reply_to = 3;
+  optional bool silent = 4;
+  optional bool no_forward = 5;
+  optional bool clear_draft = 6;
+  optional int32 schedule_date = 7;
+}
+
+// SentMultiMedia is the response for SendMultiMedia.
+message SentMultiMedia {
+  repeated Message messages = 1;
+  repeated User users = 2;
+  repeated Chat chats = 3;
+}
+
+// MessageEdit is the request for EditMessage.
+message MessageEdit {
+  PeerInput peer = 1;
+  int64 message_id = 2;
+  optional string message = 3;
+  optional MediaInput media = 4;
+  repeated MessageTextEntity entities = 5;
+  optional bool no_webpage = 6;
+  optional int32 schedule_date = 7;
+}
+
+// EditedMessage is the response for EditMessage.
+message EditedMessage {
+  Message message = 1;
+  repeated User users = 2;
+  repeated Chat chats = 3;
+}
+
+// TypingIndicator is the request for SetTyping.
+message TypingIndicator {
+  PeerInput peer = 1;
+  TypingAction action = 2;
+  optional int64 top_msg_id = 3;
+}
+
+// TypingAck is the response for SetTyping.
+message TypingAck {
+  bool success = 1;
+}
+
+// BotStart is the request for SendStartBot.
+message BotStart {
+  PeerInput bot = 1;
+  PeerInput peer = 2;
+  string start_param = 3;
+  int64 random_id = 4;
+}
+
+// BotResponse is the response for SendStartBot.
+message BotResponse {
+  Message message = 1;
+  repeated User users = 2;
+  repeated Chat chats = 3;
+}
+
+// =============================================================================
+// Search RPC messages
+// =============================================================================
+
+// SearchQuery is the request for Search.
+message SearchQuery {
+  PeerInput peer = 1;
+  string query = 2;
+  optional PeerInput from_peer = 3;
+  optional int64 top_msg_id = 4;
+  MessagesFilter filter = 5;
+  int32 min_date = 6;
+  int32 max_date = 7;
+  int32 offset_id = 8;
+  int32 add_offset = 9;
+  int32 limit = 10;
+  optional int64 max_id = 11;
+  optional int64 min_id = 12;
+}
+
+// SearchResults is the response for Search.
+message SearchResults {
+  repeated Message messages = 1;
+  repeated User users = 2;
+  repeated Chat chats = 3;
+  int32 count = 4;
+  optional int32 next_rate = 5;
+}
+
+// =============================================================================
+// Reactions RPC messages
+// =============================================================================
+
+// ReactionsQuery is the request for GetMessagesReactions.
+message ReactionsQuery {
+  PeerInput peer = 1;
+  repeated int64 message_ids = 2;
+}
+
+// MessagesReactions is the response for GetMessagesReactions.
+message MessagesReactions {
+  repeated MessageReactions reactions = 1;
+}
+
+// ReactionListQuery is the request for GetMessageReactionsList.
+message ReactionListQuery {
+  PeerInput peer = 1;
+  int64 message_id = 2;
+  optional Reaction reaction = 3;
+  optional string offset = 4;
+  int32 limit = 5;
+}
+
+// ReactionList is the response for GetMessageReactionsList.
+message ReactionList {
+  repeated PeerReaction reactions = 1;
+  int32 count = 2;
+  optional string next_offset = 3;
+  repeated User users = 4;
+}
+
+// ReactionToggle is the request for SendReaction.
+message ReactionToggle {
+  PeerInput peer = 1;
+  int64 message_id = 2;
+  repeated Reaction reactions = 3;
+  optional bool big = 4;
+  optional bool add_to_recent = 5;
+}
+
+// ReactionUpdate is the response for SendReaction.
+message ReactionUpdate {
+  Message message = 1;
+  repeated User users = 2;
+  repeated Chat chats = 3;
+}
+
+// UnreadMentionsQuery is the request for GetUnreadMentions.
+message UnreadMentionsQuery {
+  PeerInput peer = 1;
+  optional int64 top_msg_id = 2;
+  int64 offset_id = 3;
+  int32 add_offset = 4;
+  int32 limit = 5;
+  optional int64 max_id = 6;
+  optional int64 min_id = 7;
+}
+
+// UnreadMentions is the response for GetUnreadMentions.
+message UnreadMentions {
+  repeated Message messages = 1;
+  repeated User users = 2;
+  repeated Chat chats = 3;
+  int32 count = 4;
+}
+
+// MentionsReadMark is the request for ReadMentions.
+message MentionsReadMark {
+  PeerInput peer = 1;
+  optional int64 top_msg_id = 2;
+}
+
+// MentionsReadReceipt is the response for ReadMentions.
+message MentionsReadReceipt {
+  bool success = 1;
+}
+
+// UnreadReactionsQuery is the request for GetUnreadReactions.
+message UnreadReactionsQuery {
+  PeerInput peer = 1;
+  optional int64 top_msg_id = 2;
+  int64 offset_id = 3;
+  int32 add_offset = 4;
+  int32 limit = 5;
+  optional int64 max_id = 6;
+  optional int64 min_id = 7;
+}
+
+// UnreadReactions is the response for GetUnreadReactions.
+message UnreadReactions {
+  repeated Message messages = 1;
+  repeated User users = 2;
+  repeated Chat chats = 3;
+  int32 count = 4;
+}
+
+// ReactionsReadMark is the request for ReadReactions.
+message ReactionsReadMark {
+  PeerInput peer = 1;
+  optional int64 top_msg_id = 2;
+}
+
+// ReactionsReadReceipt is the response for ReadReactions.
+message ReactionsReadReceipt {
+  bool success = 1;
+}
+
+// =============================================================================
+// Polls & Votes RPC messages
+// =============================================================================
+
+// VoteSubmission is the request for SendVote.
+message VoteSubmission {
+  PeerInput peer = 1;
+  int64 message_id = 2;
+  repeated bytes options = 3;
+}
+
+// VoteUpdate is the response for SendVote.
+message VoteUpdate {
+  Message message = 1;
+  repeated User users = 2;
+  repeated Chat chats = 3;
+}
+
+// PollVotesQuery is the request for GetPollVotes.
+message PollVotesQuery {
+  PeerInput peer = 1;
+  int64 message_id = 2;
+  optional bytes option = 3;
+  optional string offset = 4;
+  int32 limit = 5;
+}
+
+// PollVoters is the response for GetPollVotes.
+message PollVoters {
+  int32 count = 1;
+  repeated PollVoter voters = 2;
+  optional string next_offset = 3;
+  repeated User users = 4;
+}
+
+// PollResultsQuery is the request for GetPollResults.
+message PollResultsQuery {
+  PeerInput peer = 1;
+  int64 message_id = 2;
+}
+
+// PollResults is the response for GetPollResults.
+message PollResults {
+  Message message = 1;
+  repeated User users = 2;
+  repeated Chat chats = 3;
+}
+
+// =============================================================================
+// Threaded RPC messages
+// =============================================================================
+
+// ThreadReadMark is the request for ReadThread.
+message ThreadReadMark {
+  PeerInput peer = 1;
+  int64 top_msg_id = 2;
+  int64 read_max_id = 3;
+}
+
+// ThreadReadReceipt is the response for ReadThread.
+message ThreadReadReceipt {
+  bool success = 1;
+}
+
+// ThreadQuery is the request for GetThreadMessage.
+message ThreadQuery {
+  PeerInput peer = 1;
+  int64 message_id = 2;
+  optional int64 offset_id = 3;
+  optional int32 offset_date = 4;
+  int32 add_offset = 5;
+  int32 limit = 6;
+  optional int64 max_id = 7;
+  optional int64 min_id = 8;
+}
+
+// ThreadMessages is the response for GetThreadMessage.
+message ThreadMessages {
+  repeated Message messages = 1;
+  repeated User users = 2;
+  repeated Chat chats = 3;
+  int32 count = 4;
+  optional int64 read_inbox_max_id = 5;
+  optional int64 read_outbox_max_id = 6;
+}

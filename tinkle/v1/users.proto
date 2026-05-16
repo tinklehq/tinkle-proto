@@ -1,0 +1,106 @@
+// Users RPC Service - Client-Facing Aggregator Layer
+// Version: 1.0.0
+//
+// Aggregator service between rpc-gateway and core services.
+// Provides user data retrieval by orchestrating user-service.
+//
+// Uses data-centric method naming and intuitive message naming.
+
+syntax = "proto3";
+
+package tinkle.v1;
+
+import "tinkle/v1/common.proto";
+
+option go_package = "github.com/tinklehq/tinkle-server/proto/tinkle/v1;tinklev1";
+
+// UsersService provides user data retrieval operations for the gateway layer.
+//
+// All methods require a valid JWT token with user context.
+// User ID is extracted from the token claims for privacy filtering.
+service UsersService {
+  // GetUsers retrieves data for multiple users in a single request.
+  // Returns User (oneof Empty/UserData) for each requested user ID.
+  // Non-existent or unavailable users return Empty variant with ID only.
+  // Maximum batch size: 100 users.
+  rpc GetUsers(GetUsersInput) returns (GetUsersResult);
+
+  // GetUserComplete retrieves comprehensive data for a single user.
+  // Returns NOT_FOUND if user does not exist.
+  // Returns full UserComplete structure (no Empty variant).
+  rpc GetUserComplete(GetUserCompleteInput) returns (UserComplete);
+}
+
+// =============================================================================
+// Input Messages
+// =============================================================================
+
+// UserInput identifies a user for lookup.
+message UserInput {
+  // Snowflake user ID (int64)
+  int64 user_id = 1;
+}
+
+// GetUsersInput contains batch of users to retrieve.
+message GetUsersInput {
+  // List of user identifiers (max 100)
+  repeated UserInput users = 1;
+}
+
+// GetUserCompleteInput identifies a single user for complete profile retrieval.
+message GetUserCompleteInput {
+  // Snowflake user ID
+  int64 user_id = 1;
+}
+
+// =============================================================================
+// Output Messages
+// =============================================================================
+
+// GetUsersResult contains retrieved user data.
+message GetUsersResult {
+  // User data for each requested ID.
+  // Order matches request order.
+  // Empty variant returned for non-existent or unavailable users.
+  repeated User users = 1;
+}
+
+// UserComplete contains comprehensive user profile data.
+// Unlike User, this message does not use oneof - returns full data or NOT_FOUND.
+message UserComplete {
+  // Snowflake user ID
+  int64 id = 1;
+
+  // Phone number in E.164 format (privacy-filtered based on viewer)
+  optional string phone_number = 2;
+
+  // Unique username
+  optional string username = 3;
+
+  // Profile photo
+  optional UserPhoto photo = 4;
+
+  // Display name
+  optional string name = 5;
+
+  // Bio/about text
+  optional string about = 6;
+
+  // Verification badge
+  optional bool verified = 7;
+
+  // Premium subscription active
+  optional bool premium = 8;
+
+  // Marked as fake account
+  optional bool fake = 9;
+
+  // Marked as scam account
+  optional bool scam = 10;
+
+  // Is a bot account
+  optional bool bot = 11;
+
+  // Account deleted marker
+  optional bool deleted = 12;
+}

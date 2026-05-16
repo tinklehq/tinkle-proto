@@ -1,0 +1,477 @@
+syntax = "proto3";
+
+package tinkle.v1;
+
+import "google/protobuf/struct.proto";
+import "tinkle/v1/common.proto";
+
+option go_package = "github.com/tinklehq/tinkle-server/proto/tinkle/v1;tinklev1";
+
+// BotsService provides public-facing bot management operations.
+// All RPCs require JWT authentication via the Authorization header.
+// The authenticated user's identity is extracted from the JWT context.
+// Ownership verification is delegated to the downstream internal bot service.
+service BotsService {
+  // ============================================================================
+  // Bot Commands (Telegram: bots.setBotCommands, bots.getBotCommands, bots.resetBotCommands)
+  // ============================================================================
+
+  // SetCommands sets the list of commands for a bot in a given scope and language.
+  // Max 100 commands per scope. An empty command list clears commands (equivalent to ResetCommands).
+  rpc SetCommands(SetCommandsRequest) returns (SetCommandsResponse);
+
+  // GetCommands retrieves the current command list for a bot in a given scope and language.
+  rpc GetCommands(GetCommandsRequest) returns (GetCommandsResponse);
+
+  // ResetCommands clears all commands for a bot in a given scope and language.
+  rpc ResetCommands(ResetCommandsRequest) returns (ResetCommandsResponse);
+
+  // ============================================================================
+  // Menu Button (Telegram: bots.setBotMenuButton, bots.getBotMenuButton)
+  // ============================================================================
+
+  // SetMenuButton sets the menu button for a bot, either globally (user_id=0) or per specific user.
+  rpc SetMenuButton(SetMenuButtonRequest) returns (SetMenuButtonResponse);
+
+  // GetMenuButton retrieves the current menu button configuration for a bot and user scope.
+  rpc GetMenuButton(GetMenuButtonRequest) returns (GetMenuButtonResponse);
+
+  // ============================================================================
+  // Default Admin Scopes (Telegram: bots.setBotGroupDefaultAdminRights, bots.setBotBroadcastDefaultAdminRights)
+  // ============================================================================
+
+  // SetGroupDefaultAdminScopes sets the default admin scopes requested when the bot is added to groups.
+  rpc SetGroupDefaultAdminScopes(SetGroupDefaultAdminScopesRequest) returns (SetGroupDefaultAdminScopesResponse);
+
+  // SetBroadcastDefaultAdminScopes sets the default admin scopes requested when the bot is added to broadcast channels.
+  rpc SetBroadcastDefaultAdminScopes(SetBroadcastDefaultAdminScopesRequest) returns (SetBroadcastDefaultAdminScopesResponse);
+
+  // ============================================================================
+  // Bot Info & Profile (Telegram: bots.setBotInfo, bots.getBotInfo)
+  // ============================================================================
+
+  // SetInfo sets localized bot info (name, about, description).
+  // At least one of name, about, or description must be provided.
+  rpc SetInfo(SetInfoRequest) returns (SetInfoResponse);
+
+  // GetInfo retrieves bot info (name, about, description) for a given language.
+  rpc GetInfo(GetInfoRequest) returns (GetInfoResponse);
+
+  // ============================================================================
+  // Username Management (Telegram: bots.toggleUsername, bots.reorderUsernames)
+  // ============================================================================
+
+  // ToggleUsername activates or deactivates a username associated with the bot.
+  // Idempotent: toggling to the current state returns success.
+  rpc ToggleUsername(BotToggleUsernameRequest) returns (BotToggleUsernameResponse);
+
+  // ReorderUsernames reorders the active usernames of the bot.
+  // The provided list must match exactly the set of currently active usernames.
+  rpc ReorderUsernames(ReorderUsernamesRequest) returns (ReorderUsernamesResponse);
+
+  // ============================================================================
+  // Owned Bots
+  // ============================================================================
+
+  // GetOwnedBots retrieves the list of bots owned by the authenticated user.
+  rpc GetOwnedBots(GetOwnedBotsRequest) returns (GetOwnedBotsResponse);
+
+  // ============================================================================
+  // Messaging Permissions (Telegram: bots.canSendMessage, bots.allowSendMessage)
+  // ============================================================================
+
+  // CanSendMessage checks whether a bot is permitted to send messages to the authenticated user.
+  rpc CanSendMessage(CanSendMessageRequest) returns (CanSendMessageResponse);
+
+  // AllowSendMessage grants a bot permission to send messages to the authenticated user.
+  // One-way grant — no revocation RPC exists (Telegram-aligned).
+  rpc AllowSendMessage(AllowSendMessageRequest) returns (AllowSendMessageResponse);
+
+  // ============================================================================
+  // Custom Requests (Telegram: bots.sendCustomRequest, bots.answerWebhookJSONQuery)
+  // ============================================================================
+
+  // SendCustomRequest forwards a custom method request with arbitrary JSON parameters
+  // to the bot backend and returns the JSON response. The aggregator does not interpret the payload.
+  rpc SendCustomRequest(SendCustomRequestRequest) returns (SendCustomRequestResponse);
+
+  // AnswerWebhookQuery responds to an incoming webhook query from the bot backend.
+  rpc AnswerWebhookQuery(AnswerWebhookQueryRequest) returns (AnswerWebhookQueryResponse);
+}
+
+// ============================================================================
+// Shared Types
+// ============================================================================
+
+// BotCommand is a single command entry with a command string and description.
+message BotCommand {
+  // Command string (1-32 chars, lowercase alphanumeric + underscores, no leading slash).
+  string command = 1;
+  // Human-readable description of the command (3-256 chars).
+  string description = 2;
+}
+
+// BotCommandScope defines the context in which commands are visible.
+message BotCommandScope {
+  // Scope variant — determines where commands are visible.
+  oneof scope {
+    // Commands visible in all chats (fallback default).
+    BotCommandScopeDefault scope_default = 1;
+    // Commands visible in all private chats with the bot.
+    BotCommandScopeAllPrivateChats all_private_chats = 2;
+    // Commands visible in all group chats.
+    BotCommandScopeAllGroupChats all_group_chats = 3;
+    // Commands visible to all group/channel administrators.
+    BotCommandScopeAllChatAdministrators all_chat_administrators = 4;
+    // Commands visible in a specific chat.
+    BotCommandScopeChat chat = 5;
+    // Commands visible to a specific user in a specific chat.
+    BotCommandScopeChatParticipant chat_participant = 6;
+  }
+}
+
+// BotCommandScopeDefault targets all chats as the default fallback.
+message BotCommandScopeDefault {}
+
+// BotCommandScopeAllPrivateChats targets all private chats with the bot.
+message BotCommandScopeAllPrivateChats {}
+
+// BotCommandScopeAllGroupChats targets all group chats.
+message BotCommandScopeAllGroupChats {}
+
+// BotCommandScopeAllChatAdministrators targets all chat administrators.
+message BotCommandScopeAllChatAdministrators {}
+
+// BotCommandScopeChat targets a specific chat by ID.
+message BotCommandScopeChat {
+  // The chat to scope commands to. Must be > 0.
+  int64 chat_id = 1;
+}
+
+// BotCommandScopeChatParticipant targets a specific user in a specific chat.
+message BotCommandScopeChatParticipant {
+  // The chat to scope commands to. Must be > 0.
+  int64 chat_id = 1;
+  // The user to scope commands to. Must be > 0.
+  int64 user_id = 2;
+}
+
+// BotMenuButton defines the bot's menu button configuration.
+message BotMenuButton {
+  // Button type variant.
+  oneof button {
+    // Platform default behavior.
+    BotMenuButtonDefault button_default = 1;
+    // Opens the bot's command list.
+    BotMenuButtonCommands button_commands = 2;
+    // Opens a mini app with the given text and URL.
+    BotMenuButtonMiniApp button_mini_app = 3;
+  }
+}
+
+// BotMenuButtonDefault uses the platform default menu button behavior.
+message BotMenuButtonDefault {}
+
+// BotMenuButtonCommands shows the bot's command list when tapped.
+message BotMenuButtonCommands {}
+
+// BotMenuButtonMiniApp opens a mini app when tapped.
+message BotMenuButtonMiniApp {
+  // Button label text (1-64 chars).
+  string text = 1;
+  // HTTPS URL to the mini app.
+  string url = 2;
+}
+
+// BotAdminScopes is replaced by ChatAdminScopes in common.proto.
+// See: tinkle/v1/common.proto ChatAdminScopes
+
+// BotInfo contains localized bot metadata.
+message BotInfo {
+  // Bot display name for the given language.
+  string name = 1;
+  // Short description shown in the bot's profile.
+  string about = 2;
+  // Long description shown on the bot's start screen.
+  string description = 3;
+}
+
+// OwnedBot is a summary of a bot owned by the authenticated user.
+message OwnedBot {
+  // Bot unique identifier.
+  int64 bot_id = 1;
+  // Bot display name.
+  string name = 2;
+  // Primary username (without @).
+  string username = 3;
+}
+
+// ============================================================================
+// Bot Commands Messages
+// ============================================================================
+
+// SetCommandsRequest sets commands for a bot in a given scope and language.
+message SetCommandsRequest {
+  // Bot to set commands for. Must be > 0.
+  int64 bot_id = 1;
+  // Scope in which commands are visible.
+  BotCommandScope scope = 2;
+  // IETF language tag (e.g., "en", "es"). Empty string for default language.
+  string lang_code = 3;
+  // List of commands to set. Max 100 per scope. Empty list clears commands.
+  repeated BotCommand commands = 4;
+}
+
+// SetCommandsResponse contains the result of the set commands operation.
+message SetCommandsResponse {
+  // Whether the operation succeeded.
+  bool success = 1;
+}
+
+// GetCommandsRequest retrieves commands for a bot in a given scope and language.
+message GetCommandsRequest {
+  // Bot to get commands for. Must be > 0.
+  int64 bot_id = 1;
+  // Scope to retrieve commands from.
+  BotCommandScope scope = 2;
+  // IETF language tag. Empty string for default language.
+  string lang_code = 3;
+}
+
+// GetCommandsResponse contains the command list for the requested scope.
+message GetCommandsResponse {
+  // Commands for the requested scope and language.
+  repeated BotCommand commands = 1;
+}
+
+// ResetCommandsRequest clears all commands for a bot in a given scope and language.
+message ResetCommandsRequest {
+  // Bot to reset commands for. Must be > 0.
+  int64 bot_id = 1;
+  // Scope to clear commands from.
+  BotCommandScope scope = 2;
+  // IETF language tag. Empty string for default language.
+  string lang_code = 3;
+}
+
+// ResetCommandsResponse contains the result of the reset commands operation.
+message ResetCommandsResponse {
+  // Whether the operation succeeded.
+  bool success = 1;
+}
+
+// ============================================================================
+// Menu Button Messages
+// ============================================================================
+
+// SetMenuButtonRequest sets the menu button for a bot.
+message SetMenuButtonRequest {
+  // Bot to set the menu button for. Must be > 0.
+  int64 bot_id = 1;
+  // Target user ID. 0 = global (all users). Must be >= 0.
+  int64 user_id = 2;
+  // Menu button configuration.
+  BotMenuButton button = 3;
+}
+
+// SetMenuButtonResponse contains the result of the set menu button operation.
+message SetMenuButtonResponse {
+  // Whether the operation succeeded.
+  bool success = 1;
+}
+
+// GetMenuButtonRequest retrieves the menu button configuration for a bot.
+message GetMenuButtonRequest {
+  // Bot to get the menu button for. Must be > 0.
+  int64 bot_id = 1;
+  // Target user ID. 0 = global. Must be >= 0.
+  int64 user_id = 2;
+}
+
+// GetMenuButtonResponse contains the current menu button configuration.
+message GetMenuButtonResponse {
+  // Current menu button configuration. Returns default type if not explicitly set.
+  BotMenuButton button = 1;
+}
+
+// ============================================================================
+// Default Admin Scopes Messages
+// ============================================================================
+
+// SetGroupDefaultAdminScopesRequest sets default admin scopes for groups.
+message SetGroupDefaultAdminScopesRequest {
+  // Bot to set group admin scopes for. Must be > 0.
+  int64 bot_id = 1;
+  // Admin scopes the bot requests when added to groups.
+  ChatAdminScopes admin_scopes = 2;
+}
+
+// SetGroupDefaultAdminScopesResponse contains the operation result.
+message SetGroupDefaultAdminScopesResponse {
+  // Whether the operation succeeded.
+  bool success = 1;
+}
+
+// SetBroadcastDefaultAdminScopesRequest sets default admin scopes for broadcast channels.
+message SetBroadcastDefaultAdminScopesRequest {
+  // Bot to set broadcast admin scopes for. Must be > 0.
+  int64 bot_id = 1;
+  // Admin scopes the bot requests when added to broadcast channels.
+  ChatAdminScopes admin_scopes = 2;
+}
+
+// SetBroadcastDefaultAdminScopesResponse contains the operation result.
+message SetBroadcastDefaultAdminScopesResponse {
+  // Whether the operation succeeded.
+  bool success = 1;
+}
+
+// ============================================================================
+// Bot Info Messages
+// ============================================================================
+
+// SetInfoRequest sets localized bot info.
+message SetInfoRequest {
+  // Bot to set info for. Must be > 0.
+  int64 bot_id = 1;
+  // IETF language tag. Empty string for default language.
+  string lang_code = 2;
+  // Bot display name (0-64 chars). Omit to leave unchanged.
+  optional string name = 3;
+  // Short profile description (0-120 chars). Omit to leave unchanged.
+  optional string about = 4;
+  // Long start screen description (0-512 chars). Omit to leave unchanged.
+  optional string description = 5;
+}
+
+// SetInfoResponse contains the operation result.
+message SetInfoResponse {
+  // Whether the operation succeeded.
+  bool success = 1;
+}
+
+// GetInfoRequest retrieves bot info for a given language.
+message GetInfoRequest {
+  // Bot to get info for. Must be > 0.
+  int64 bot_id = 1;
+  // IETF language tag. Empty string for default language.
+  string lang_code = 2;
+}
+
+// GetInfoResponse contains the bot info for the requested language.
+message GetInfoResponse {
+  // Bot info for the requested language.
+  BotInfo info = 1;
+}
+
+// ============================================================================
+// Username Management Messages
+// ============================================================================
+
+// BotToggleUsernameRequest activates or deactivates a bot username.
+message BotToggleUsernameRequest {
+  // Bot to toggle username for. Must be > 0.
+  int64 bot_id = 1;
+  // Username to toggle. Must be non-empty.
+  string username = 2;
+  // Whether to activate (true) or deactivate (false) the username.
+  bool active = 3;
+}
+
+// BotToggleUsernameResponse contains the operation result.
+message BotToggleUsernameResponse {
+  // Whether the operation succeeded.
+  bool success = 1;
+}
+
+// ReorderUsernamesRequest reorders the active usernames of a bot.
+message ReorderUsernamesRequest {
+  // Bot to reorder usernames for. Must be > 0.
+  int64 bot_id = 1;
+  // Ordered list of active usernames. Must match exactly the set of currently active usernames.
+  repeated string usernames = 2;
+}
+
+// ReorderUsernamesResponse contains the operation result.
+message ReorderUsernamesResponse {
+  // Whether the operation succeeded.
+  bool success = 1;
+}
+
+// ============================================================================
+// Owned Bots Messages
+// ============================================================================
+
+// GetOwnedBotsRequest retrieves bots owned by the authenticated user.
+// No fields needed — user identity comes from JWT context.
+message GetOwnedBotsRequest {}
+
+// GetOwnedBotsResponse contains the list of owned bots.
+message GetOwnedBotsResponse {
+  // Bots owned by the authenticated user.
+  repeated OwnedBot bots = 1;
+}
+
+// ============================================================================
+// Messaging Permissions Messages
+// ============================================================================
+
+// CanSendMessageRequest checks if a bot can send messages to the authenticated user.
+message CanSendMessageRequest {
+  // Bot to check messaging permission for. Must be > 0.
+  int64 bot_id = 1;
+}
+
+// CanSendMessageResponse contains the permission check result.
+message CanSendMessageResponse {
+  // Whether the bot is permitted to send messages to the user.
+  bool can_send = 1;
+}
+
+// AllowSendMessageRequest grants a bot permission to message the authenticated user.
+message AllowSendMessageRequest {
+  // Bot to grant messaging permission to. Must be > 0.
+  int64 bot_id = 1;
+}
+
+// AllowSendMessageResponse contains the grant result.
+message AllowSendMessageResponse {
+  // Whether the operation succeeded.
+  bool success = 1;
+}
+
+// ============================================================================
+// Custom Request Messages
+// ============================================================================
+
+// SendCustomRequestRequest forwards a custom method to the bot backend.
+message SendCustomRequestRequest {
+  // Bot to send the custom request for. Must be > 0.
+  int64 bot_id = 1;
+  // Custom method name. Must be non-empty.
+  string method = 2;
+  // Arbitrary JSON parameters. Passed through without interpretation.
+  google.protobuf.Struct params = 3;
+}
+
+// SendCustomRequestResponse contains the bot backend's response.
+message SendCustomRequestResponse {
+  // Arbitrary JSON response from the bot backend.
+  google.protobuf.Struct result = 1;
+}
+
+// AnswerWebhookQueryRequest responds to a webhook query from the bot backend.
+message AnswerWebhookQueryRequest {
+  // Bot to answer the webhook query for. Must be > 0.
+  int64 bot_id = 1;
+  // Unique identifier for the query being answered. Must be non-empty.
+  string query_id = 2;
+  // Arbitrary JSON data to send as the response.
+  google.protobuf.Struct data = 3;
+}
+
+// AnswerWebhookQueryResponse contains the operation result.
+message AnswerWebhookQueryResponse {
+  // Whether the operation succeeded.
+  bool success = 1;
+}
