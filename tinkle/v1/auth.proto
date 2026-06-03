@@ -1,9 +1,7 @@
-// Auth RPC Service - Aggregator Layer
-// Version: 2.0.0
+// Auth RPC Service - Aggregator Layer.
 //
 // Aggregator service between rpc-gateway and core services.
 // Provides authentication flows by orchestrating identity-service and user-service.
-
 syntax = "proto3";
 
 package tinkle.v1;
@@ -14,73 +12,89 @@ import "tinkle/v1/common.proto";
 option go_package = "github.com/tinklehq/tinkle-server/proto/tinkle/v1;tinklev1";
 
 // AuthService provides authentication operations for the gateway layer.
-//
-// Uses data-centric method naming and intuitive message naming.
 service AuthService {
   // SendCode initiates verification code delivery via SMS.
   // Returns the delivery method and request tracking information.
-  rpc SendCode(SendCodeInput) returns (CodeDeliveryResult);
+  rpc SendCode(SendCodeRequest) returns (SendCodeResponse);
 
   // SignIn verifies code and returns user data with auth tokens.
   // Creates a new user account if the phone number is not registered.
-  rpc SignIn(SignInInput) returns (AuthData);
+  rpc SignIn(SignInRequest) returns (SignInResponse);
 
   // RenewToken refreshes tokens using a valid refresh token.
   // Returns updated user data with new tokens.
-  rpc RenewToken(RenewTokenInput) returns (AuthData);
+  rpc RenewToken(RenewTokenRequest) returns (RenewTokenResponse);
 }
 
-// SendCodeInput contains phone number and language for code delivery.
-message SendCodeInput {
-  // Phone number in E.164 format (e.g., "+14155551234")
-  string phone_number = 1;
+// =============================================================================
+// SendCode RPC
+// =============================================================================
 
-  // ISO 639-1 language code for SMS content (e.g., "en", "zh")
+// SendCodeRequest contains the phone number and language for code delivery.
+message SendCodeRequest {
+  // Phone number in E.164 format (e.g., "+14155551234").
+  string phone_number = 1;
+  // ISO 639-1 language code for SMS content (e.g., "en", "zh").
   string lang_code = 2;
 }
 
-// CodeDeliveryResult confirms code was sent and provides tracking info.
-message CodeDeliveryResult {
-  // Delivery method used for this request
+// SendCodeResponse confirms code was sent and provides tracking info.
+message SendCodeResponse {
+  // Delivery method used for this request.
   VerificationCodeType code_type = 1;
-
-  // Request identifier for tracking/debugging
+  // Request identifier for tracking/debugging.
   string request_id = 2;
-
-  // Timestamp when the code expires
+  // Timestamp when the code expires.
   google.protobuf.Timestamp expires_at = 3;
 }
 
-// SignInInput contains phone number and verification code.
-message SignInInput {
-  // Phone number in E.164 format
-  string phone_number = 1;
+// =============================================================================
+// SignIn RPC
+// =============================================================================
 
-  // Verification code received via SMS (typically 6 digits)
+// SignInRequest contains the phone number and verification code.
+message SignInRequest {
+  // Phone number in E.164 format.
+  string phone_number = 1;
+  // Verification code received via SMS (typically 6 digits).
   string code = 2;
 }
 
-// RenewTokenInput contains the refresh token for renewal.
-message RenewTokenInput {
-  // Current refresh token
+// SignInResponse contains user information and auth tokens.
+// Aggregated from identity-service (tokens) and user-service (user data).
+message SignInResponse {
+  // User information (Empty if user is not active, UserData if active).
+  User user = 1;
+  // JWT ID token containing user claims.
+  string id_token = 2;
+  // Refresh token for obtaining new access tokens.
+  string refresh_token = 3;
+  // Token type (always "Bearer").
+  string token_type = 4;
+  // True if this sign-in created a new user account.
+  bool is_new_user = 5;
+}
+
+// =============================================================================
+// RenewToken RPC
+// =============================================================================
+
+// RenewTokenRequest contains the refresh token for renewal.
+message RenewTokenRequest {
+  // Current refresh token.
   string refresh_token = 1;
 }
 
-// AuthData contains user information and auth tokens.
-// Aggregated from identity-service (tokens) and user-service (user data).
-message AuthData {
-  // User information (Empty if user is not active, UserData if active)
+// RenewTokenResponse returns updated user data with new tokens.
+message RenewTokenResponse {
+  // User information (Empty if user is not active, UserData if active).
   User user = 1;
-
-  // JWT ID token containing user claims
+  // JWT ID token containing user claims.
   string id_token = 2;
-
-  // Refresh token for obtaining new access tokens
+  // Refresh token for obtaining new access tokens.
   string refresh_token = 3;
-
-  // Token type (always "Bearer")
+  // Token type (always "Bearer").
   string token_type = 4;
-
-  // True if this sign-in created a new user account
+  // True if this renewal resulted from a new account.
   bool is_new_user = 5;
 }

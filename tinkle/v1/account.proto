@@ -1,12 +1,8 @@
-// Account RPC Service - Client-Facing Aggregator Layer
-// Version: 1.0.0
+// Account RPC Service - Client-Facing Aggregator Layer.
 //
 // Aggregator service between rpc-gateway and core services.
 // Provides authenticated user account operations by orchestrating
 // notification-service, user-service, username-service, and identity-service.
-//
-// Uses data-centric method naming and intuitive message naming.
-
 syntax = "proto3";
 
 package tinkle.v1;
@@ -21,204 +17,97 @@ option go_package = "github.com/tinklehq/tinkle-server/proto/tinkle/v1;tinklev1"
 // All methods require a valid JWT token with user context.
 // User ID is extracted from the token claims, not passed in requests.
 service AccountService {
-  // ===========================================================================
-  // Push Notification Operations
-  // ===========================================================================
-
   // RegisterPush registers a device for push notifications.
   // Returns the registered device on success.
   // Returns INVALID_ARGUMENT if token or lang_code is invalid.
-  rpc RegisterPush(RegisterPushInput) returns (PushDevice);
+  rpc RegisterPush(RegisterPushRequest) returns (RegisterPushResponse);
 
   // UnregisterPush removes a device from push notifications.
   // Returns NOT_FOUND if device does not exist.
-  rpc UnregisterPush(UnregisterPushInput) returns (UnregisterPushResult);
-
-  // ===========================================================================
-  // Notification Settings Operations
-  // ===========================================================================
+  rpc UnregisterPush(UnregisterPushRequest) returns (UnregisterPushResponse);
 
   // GetNotificationSettings retrieves all notification settings for the user.
   // Returns empty list if user has no settings configured.
-  rpc GetNotificationSettings(GetNotificationSettingsQuery) returns (NotificationSettingsList);
+  rpc GetNotificationSettings(GetNotificationSettingsRequest) returns (GetNotificationSettingsResponse);
 
   // UpdateNotificationSetting updates a notification setting for a scope.
   // Creates the setting if it doesn't exist.
-  rpc UpdateNotificationSetting(UpdateNotificationSettingInput) returns (NotificationSetting);
-
-
+  rpc UpdateNotificationSetting(UpdateNotificationSettingRequest) returns (UpdateNotificationSettingResponse);
 
   // ResetNotificationSettings resets all notification settings to defaults.
   // Sets enabled=true, preview=true on all scopes.
-  rpc ResetNotificationSettings(ResetNotificationSettingsInput) returns (NotificationSettingsList);
-
-  // ===========================================================================
-  // Privacy Operations
-  // ===========================================================================
+  rpc ResetNotificationSettings(ResetNotificationSettingsRequest) returns (ResetNotificationSettingsResponse);
 
   // GetPrivacy retrieves a specific privacy setting by kind.
-  rpc GetPrivacy(GetPrivacyQuery) returns (PrivacySetting);
+  rpc GetPrivacy(GetPrivacyRequest) returns (GetPrivacyResponse);
 
   // SetPrivacy updates a privacy setting for a specific kind.
   // Creates the setting if it doesn't exist.
-  rpc SetPrivacy(SetPrivacyInput) returns (PrivacySetting);
-
-  // ===========================================================================
-  // Profile Operations
-  // ===========================================================================
+  rpc SetPrivacy(SetPrivacyRequest) returns (SetPrivacyResponse);
 
   // UpdateProfile updates the user's profile (name, about).
-  rpc UpdateProfile(UpdateProfileInput) returns (Profile);
-
-  // ===========================================================================
-  // Username Operations
-  // ===========================================================================
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
 
   // ValidateUsername checks if a username is valid and available.
-  rpc ValidateUsername(ValidateUsernameInput) returns (UsernameValidation);
+  rpc ValidateUsername(ValidateUsernameRequest) returns (ValidateUsernameResponse);
 
   // UpdateUsername assigns or changes the user's username.
   // Returns ALREADY_EXISTS if username is taken.
   // Returns INVALID_ARGUMENT if format is invalid.
-  rpc UpdateUsername(UpdateUsernameInput) returns (Username);
-
-  // ===========================================================================
-  // Account Operations
-  // ===========================================================================
+  rpc UpdateUsername(UpdateUsernameRequest) returns (UpdateUsernameResponse);
 
   // DeleteAccount soft-deletes the user's account.
   // Auto-assigns group/channel ownership to oldest admin or dissolves if last owner.
   // Triggers cleanup of push registrations and notification settings.
-  rpc DeleteAccount(DeleteAccountInput) returns (DeleteAccountResult);
-
-  // ===========================================================================
-  // Phone Number Change Operations
-  // ===========================================================================
+  rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
 
   // SendChangePhoneCode initiates verification for a new phone number.
   // Returns ALREADY_EXISTS if phone number is already registered to another user.
-  rpc SendChangePhoneCode(SendChangePhoneCodeInput) returns (PhoneCodeDeliveryResult);
+  rpc SendChangePhoneCode(SendChangePhoneCodeRequest) returns (SendChangePhoneCodeResponse);
 
   // ChangePhoneNumber completes the phone number change with verification code.
   // Returns INVALID_ARGUMENT if code is incorrect or expired.
-  rpc ChangePhoneNumber(ChangePhoneNumberInput) returns (ChangePhoneResult);
-
-  // ===========================================================================
-  // Content Settings Operations
-  // ===========================================================================
+  rpc ChangePhoneNumber(ChangePhoneNumberRequest) returns (ChangePhoneNumberResponse);
 
   // GetContentSettings retrieves the user's content settings.
-  rpc GetContentSettings(GetContentSettingsQuery) returns (ContentSettings);
+  rpc GetContentSettings(GetContentSettingsRequest) returns (GetContentSettingsResponse);
 
   // SetContentSetting toggles content scope settings.
   // For each scope: if enabled, disables it; if disabled, enables it.
-  rpc SetContentSetting(SetContentSettingInput) returns (ContentSettings);
-}
-
-// =============================================================================
-// Push Device Messages
-// =============================================================================
-
-// RegisterPushInput contains device registration data.
-message RegisterPushInput {
-  // Platform-specific push token
-  string token = 1;
-
-  // Token type (APNS, APNS_VOIP, FCM)
-  PushTokenType type = 2;
-
-  // ISO 639-1 language code for localized notifications
-  string lang_code = 3;
+  rpc SetContentSetting(SetContentSettingRequest) returns (SetContentSettingResponse);
 }
 
 // PushDevice represents a registered push notification device.
 message PushDevice {
-  // Platform-specific push token
+  // Platform-specific push token.
   string token = 1;
-
-  // Token type
+  // Token type.
   PushTokenType type = 2;
-
-  // Language code
+  // Language code.
   string lang_code = 3;
-
-  // When the device was registered
+  // When the device was registered.
   google.protobuf.Timestamp registered_at = 4;
-}
-
-// UnregisterPushInput identifies a device to unregister.
-message UnregisterPushInput {
-  // Push token to unregister
-  string token = 1;
-}
-
-// UnregisterPushResult confirms device removal.
-message UnregisterPushResult {
-  // True if device was removed
-  bool removed = 1;
-}
-
-// =============================================================================
-// Notification Settings Messages
-// =============================================================================
-
-// GetNotificationSettingsQuery is empty - user ID from token.
-message GetNotificationSettingsQuery {}
-
-// NotificationSettingsList contains all notification settings.
-message NotificationSettingsList {
-  repeated NotificationSetting settings = 1;
 }
 
 // NotificationSetting represents preferences for a notification scope.
 message NotificationSetting {
-  // Scope (USERS, GROUPS, CHANNELS)
+  // Scope (USERS, GROUPS, CHANNELS).
   NotificationScope scope = 1;
-
-  // Whether notifications are enabled (optional to distinguish false from unset)
+  // Whether notifications are enabled (optional to distinguish false from unset).
   optional bool enabled = 2;
-
-  // Whether message previews are shown (optional to distinguish false from unset)
+  // Whether message previews are shown (optional to distinguish false from unset).
   optional bool preview = 3;
-
-  // Custom notification sound (empty = default)
+  // Custom notification sound (empty = default).
   string sound = 4;
-}
-
-// UpdateNotificationSettingInput contains setting updates.
-message UpdateNotificationSettingInput {
-  // Scope to update
-  NotificationScope scope = 1;
-
-  // New enabled value (optional)
-  optional bool enabled = 2;
-
-  // New preview value (optional)
-  optional bool preview = 3;
-
-  // New sound value (optional)
-  optional string sound = 4;
-}
-
-
-
-// ResetNotificationSettingsInput is empty - resets all for user.
-message ResetNotificationSettingsInput {}
-
-// =============================================================================
-// Privacy Messages
-// =============================================================================
-
-// GetPrivacyQuery requests a specific privacy setting by kind.
-message GetPrivacyQuery {
-  // Required: the privacy kind to retrieve
-  PrivacyKind kind = 1;
 }
 
 // PrivacySetting represents a privacy preference with optional rules.
 message PrivacySetting {
+  // The privacy kind this setting applies to.
   PrivacyKind kind = 1;
+  // Who can see the user's information for this kind.
   PrivacyAllowValue allow_value = 2;
+  // Exception rules for specific target users.
   repeated PrivacyRule rules = 3;
 }
 
@@ -234,133 +123,246 @@ message PrivacyRuleInput {
   PrivacyRuleAction action = 2;
 }
 
-// SetPrivacyInput contains privacy update data.
-message SetPrivacyInput {
-  // Required: the privacy kind to update
-  PrivacyKind kind = 1;
-  // Required: the new allow value
-  PrivacyAllowValue allow_value = 2;
-  // Required: full list of privacy rules (replaces existing rules)
-  repeated PrivacyRuleInput rules = 3;
-}
-
-// =============================================================================
-// Profile Messages
-// =============================================================================
-
-// UpdateProfileInput contains profile update data.
-message UpdateProfileInput {
-  // Display name (max 100 chars)
-  optional string name = 1;
-
-  // About/bio text (max 500 chars)
-  optional string about = 2;
-}
-
 // Profile represents user profile information.
 message Profile {
   string name = 1;
   string about = 2;
 }
 
-// =============================================================================
-// Username Messages
-// =============================================================================
-
-// ValidateUsernameInput contains username to validate.
-message ValidateUsernameInput {
-  // Username to check (5-32 chars, alphanumeric + underscore)
-  string username = 1;
-}
-
-// UsernameValidation indicates validation result.
-message UsernameValidation {
-  // True if format is valid
-  bool valid = 1;
-
-  // True if available for assignment
-  bool available = 2;
-
-  // Reason if invalid (empty if valid)
-  string reason = 3;
-}
-
-// UpdateUsernameInput contains new username.
-message UpdateUsernameInput {
-  string username = 1;
-}
-
-// Username represents assigned username.
+// Username represents an assigned username.
 message Username {
   string username = 1;
   google.protobuf.Timestamp assigned_at = 2;
 }
 
+// ContentSettings represents content visibility preferences.
+message ContentSettings {
+  // List of enabled content scopes.
+  repeated ContentScope scopes = 1;
+}
+
 // =============================================================================
-// Account Messages
+// RegisterPush RPC
 // =============================================================================
 
-// DeleteAccountInput is empty - deletes current user's account.
-message DeleteAccountInput {}
+// RegisterPushRequest contains device registration data.
+message RegisterPushRequest {
+  // Platform-specific push token.
+  string token = 1;
+  // Token type (APNS, APNS_VOIP, FCM).
+  PushTokenType type = 2;
+  // ISO 639-1 language code for localized notifications.
+  string lang_code = 3;
+}
 
-// DeleteAccountResult confirms account deletion.
-message DeleteAccountResult {
-  // True if account was deleted
+// RegisterPushResponse returns the registered device.
+message RegisterPushResponse {
+  // The registered push device.
+  PushDevice device = 1;
+}
+
+// UnregisterPushRequest identifies a device to unregister.
+message UnregisterPushRequest {
+  // Push token to unregister.
+  string token = 1;
+}
+
+// UnregisterPushResponse confirms device removal.
+message UnregisterPushResponse {
+  // True if the device was removed.
+  bool removed = 1;
+}
+
+// =============================================================================
+// Notification Settings RPCs
+// =============================================================================
+
+// GetNotificationSettingsRequest is empty - user ID from token.
+message GetNotificationSettingsRequest {}
+
+// GetNotificationSettingsResponse contains the user's notification settings.
+message GetNotificationSettingsResponse {
+  // List of notification settings.
+  repeated NotificationSetting settings = 1;
+}
+
+// UpdateNotificationSettingRequest contains setting updates.
+message UpdateNotificationSettingRequest {
+  // Scope to update.
+  NotificationScope scope = 1;
+  // New enabled value (optional).
+  optional bool enabled = 2;
+  // New preview value (optional).
+  optional bool preview = 3;
+  // New sound value (optional).
+  optional string sound = 4;
+}
+
+// UpdateNotificationSettingResponse returns the updated setting.
+message UpdateNotificationSettingResponse {
+  // The updated notification setting.
+  NotificationSetting setting = 1;
+}
+
+// ResetNotificationSettingsRequest is empty - resets all for user.
+message ResetNotificationSettingsRequest {}
+
+// ResetNotificationSettingsResponse returns the reset settings list.
+message ResetNotificationSettingsResponse {
+  // The reset notification settings.
+  repeated NotificationSetting settings = 1;
+}
+
+// =============================================================================
+// Privacy RPCs
+// =============================================================================
+
+// GetPrivacyRequest requests a specific privacy setting by kind.
+message GetPrivacyRequest {
+  // The privacy kind to retrieve.
+  PrivacyKind kind = 1;
+}
+
+// GetPrivacyResponse returns the privacy setting.
+message GetPrivacyResponse {
+  // The privacy setting for the requested kind.
+  PrivacySetting setting = 1;
+}
+
+// SetPrivacyRequest contains privacy update data.
+message SetPrivacyRequest {
+  // The privacy kind to update.
+  PrivacyKind kind = 1;
+  // The new allow value.
+  PrivacyAllowValue allow_value = 2;
+  // Full list of privacy rules (replaces existing rules).
+  repeated PrivacyRuleInput rules = 3;
+}
+
+// SetPrivacyResponse returns the updated privacy setting.
+message SetPrivacyResponse {
+  // The updated privacy setting.
+  PrivacySetting setting = 1;
+}
+
+// =============================================================================
+// Profile RPCs
+// =============================================================================
+
+// UpdateProfileRequest contains profile update data.
+message UpdateProfileRequest {
+  // Display name (max 100 chars).
+  optional string name = 1;
+  // About/bio text (max 500 chars).
+  optional string about = 2;
+}
+
+// UpdateProfileResponse returns the updated profile.
+message UpdateProfileResponse {
+  // The updated profile.
+  Profile profile = 1;
+}
+
+// =============================================================================
+// Username RPCs
+// =============================================================================
+
+// ValidateUsernameRequest contains the username to validate.
+message ValidateUsernameRequest {
+  // Username to check (5-32 chars, alphanumeric + underscore).
+  string username = 1;
+}
+
+// ValidateUsernameResponse indicates the validation result.
+message ValidateUsernameResponse {
+  // True if the format is valid.
+  bool valid = 1;
+  // True if available for assignment.
+  bool available = 2;
+  // Reason if invalid (empty if valid).
+  string reason = 3;
+}
+
+// UpdateUsernameRequest contains the new username.
+message UpdateUsernameRequest {
+  // Username to assign.
+  string username = 1;
+}
+
+// UpdateUsernameResponse returns the assigned username.
+message UpdateUsernameResponse {
+  // The assigned username.
+  Username username = 1;
+}
+
+// =============================================================================
+// Account Deletion RPCs
+// =============================================================================
+
+// DeleteAccountRequest is empty - deletes the current user's account.
+message DeleteAccountRequest {}
+
+// DeleteAccountResponse confirms account deletion.
+message DeleteAccountResponse {
+  // True if the account was deleted.
   bool deleted = 1;
 }
 
 // =============================================================================
-// Phone Change Messages
+// Phone Number Change RPCs
 // =============================================================================
 
-// SendChangePhoneCodeInput contains new phone number.
-message SendChangePhoneCodeInput {
-  // New phone number in E.164 format
+// SendChangePhoneCodeRequest contains the new phone number.
+message SendChangePhoneCodeRequest {
+  // New phone number in E.164 format.
   string phone_number = 1;
-
-  // Language code for SMS content
+  // Language code for SMS content.
   string lang_code = 2;
 }
 
-// PhoneCodeDeliveryResult confirms phone verification code was sent.
-message PhoneCodeDeliveryResult {
-  // Request identifier for tracking
+// SendChangePhoneCodeResponse confirms code delivery.
+message SendChangePhoneCodeResponse {
+  // Request identifier for tracking.
   string request_id = 1;
-
-  // When the code expires
+  // When the code expires.
   google.protobuf.Timestamp expires_at = 2;
 }
 
-// ChangePhoneNumberInput contains new phone and verification code.
-message ChangePhoneNumberInput {
-  // New phone number in E.164 format
+// ChangePhoneNumberRequest contains the new phone and verification code.
+message ChangePhoneNumberRequest {
+  // New phone number in E.164 format.
   string phone_number = 1;
-
-  // Verification code received via SMS
+  // Verification code received via SMS.
   string code = 2;
 }
 
-// ChangePhoneResult confirms phone number change.
-message ChangePhoneResult {
-  // New phone number (confirmed)
+// ChangePhoneNumberResponse confirms the phone number change.
+message ChangePhoneNumberResponse {
+  // New phone number (confirmed).
   string phone_number = 1;
 }
 
 // =============================================================================
-// Content Settings Messages
+// Content Settings RPCs
 // =============================================================================
 
-// GetContentSettingsQuery is empty - user ID from token.
-message GetContentSettingsQuery {}
+// GetContentSettingsRequest is empty - user ID from token.
+message GetContentSettingsRequest {}
 
-// ContentSettings represents content visibility preferences.
-message ContentSettings {
-  // List of enabled content scopes
+// GetContentSettingsResponse returns the content settings.
+message GetContentSettingsResponse {
+  // The user's content settings.
+  ContentSettings settings = 1;
+}
+
+// SetContentSettingRequest contains scopes to toggle.
+message SetContentSettingRequest {
+  // Scopes to toggle.
   repeated ContentScope scopes = 1;
 }
 
-// SetContentSettingInput contains scopes to toggle.
-message SetContentSettingInput {
-  // Scopes to toggle
-  repeated ContentScope scopes = 1;
+// SetContentSettingResponse returns the updated content settings.
+message SetContentSettingResponse {
+  // The updated content settings.
+  ContentSettings settings = 1;
 }

@@ -1,6 +1,10 @@
-// Messages gRPC service contract for client-facing messaging operations.
-// This file is a design artifact. The production proto will live at
-// proto/tinkle/v1/messages.proto.
+// Messages gRPC Service - Client-Facing Messaging Operations.
+//
+// Provides all client-visible chat, dialog, history, message, reaction,
+// poll, and thread operations. Aggregates dialog/chat/messaging state
+// across the message, dialog, chat, and roster core services.
+//
+// All methods require a valid JWT token; user_id is extracted from token claims.
 syntax = "proto3";
 
 package tinkle.v1;
@@ -11,108 +15,107 @@ import "tinkle/v1/common.proto";
 option go_package = "github.com/tinklehq/tinkle-server/proto/tinkle/v1;tinklev1";
 
 // MessagesService provides client-facing messaging operations.
-// All methods require a valid JWT token; user_id is extracted from token claims.
 service MessagesService {
   // ---- Dialog & History (5 RPCs) ----
 
   // GetDialogs returns the authenticated user's dialog list.
-  rpc GetDialogs(DialogQuery) returns (DialogList);
+  rpc GetDialogs(GetDialogsRequest) returns (GetDialogsResponse);
   // GetHistory returns message history for a conversation with cursor-based pagination.
-  rpc GetHistory(HistoryQuery) returns (MessageHistory);
+  rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse);
   // ReadHistory marks messages as read up to a specified message_id.
-  rpc ReadHistory(HistoryReadMark) returns (ReadReceipt);
+  rpc ReadHistory(ReadHistoryRequest) returns (ReadHistoryResponse);
   // DeleteHistory deletes conversation history with optional bilateral revocation.
-  rpc DeleteHistory(HistoryDeletion) returns (AffectedHistory);
+  rpc DeleteHistory(DeleteHistoryRequest) returns (DeleteHistoryResponse);
   // DeleteMessages deletes specific messages by ID.
-  rpc DeleteMessages(MessageDeletion) returns (AffectedMessages);
+  rpc DeleteMessages(DeleteMessagesRequest) returns (DeleteMessagesResponse);
 
   // ---- Chat Creation & Structure (6 RPCs) ----
 
   // CreateChat creates a new group chat with initial participants.
-  rpc CreateChat(NewChat) returns (CreatedChat);
+  rpc CreateChat(CreateChatRequest) returns (CreateChatResponse);
   // EditChatTitle updates a chat's title.
-  rpc EditChatTitle(ChatTitleEdit) returns (ChatTitleUpdated);
+  rpc EditChatTitle(EditChatTitleRequest) returns (EditChatTitleResponse);
   // EditChatPhoto updates or removes a chat's photo.
-  rpc EditChatPhoto(ChatPhotoEdit) returns (ChatPhotoUpdated);
+  rpc EditChatPhoto(EditChatPhotoRequest) returns (EditChatPhotoResponse);
   // EditChatAbout updates a chat's description.
-  rpc EditChatAbout(ChatAboutEdit) returns (ChatAboutUpdated);
+  rpc EditChatAbout(EditChatAboutRequest) returns (EditChatAboutResponse);
   // GetChats returns basic info for multiple chats by ID.
-  rpc GetChats(ChatLookup) returns (Chats);
+  rpc GetChats(GetChatsRequest) returns (GetChatsResponse);
   // GetChatComplete returns full chat details including participants, admins, and invite links.
-  rpc GetChatComplete(ChatDetailQuery) returns (ChatDetail);
+  rpc GetChatComplete(GetChatCompleteRequest) returns (GetChatCompleteResponse);
 
   // ---- Participants & Scopes (4 RPCs) ----
 
   // AddChatParticipant adds a user to a group chat.
-  rpc AddChatParticipant(ParticipantAddition) returns (ParticipantAdded);
+  rpc AddChatParticipant(AddChatParticipantRequest) returns (AddChatParticipantResponse);
   // RemoveChatParticipant removes a user from a group chat.
-  rpc RemoveChatParticipant(ParticipantRemoval) returns (ParticipantRemoved);
+  rpc RemoveChatParticipant(RemoveChatParticipantRequest) returns (RemoveChatParticipantResponse);
   // EditChatAdmin promotes or demotes a chat admin.
-  rpc EditChatAdmin(AdminEdit) returns (AdminUpdated);
+  rpc EditChatAdmin(EditChatAdminRequest) returns (EditChatAdminResponse);
   // EditChatRestrictedScopes applies restricted permissions to a user in a chat.
-  rpc EditChatRestrictedScopes(ScopesEdit) returns (ScopesUpdated);
+  rpc EditChatRestrictedScopes(EditChatRestrictedScopesRequest) returns (EditChatRestrictedScopesResponse);
 
   // ---- TTL, Pinned, Scheduled (3 RPCs) ----
 
   // SetHistoryTTL configures auto-delete timer for a conversation.
-  rpc SetHistoryTTL(HistoryTTL) returns (TTLUpdated);
+  rpc SetHistoryTTL(SetHistoryTTLRequest) returns (SetHistoryTTLResponse);
   // UpdatePinnedMessage pins or unpins a message in a conversation.
-  rpc UpdatePinnedMessage(PinAction) returns (PinUpdated);
+  rpc UpdatePinnedMessage(UpdatePinnedMessageRequest) returns (UpdatePinnedMessageResponse);
   // UnpinAllMessages unpins all messages in a conversation or thread.
-  rpc UnpinAllMessages(UnpinAllAction) returns (UnpinSummary);
+  rpc UnpinAllMessages(UnpinAllMessagesRequest) returns (UnpinAllMessagesResponse);
 
   // ---- Sending & Editing (6 RPCs) ----
 
   // SendMessage sends a text message to a conversation.
-  rpc SendMessage(OutgoingMessage) returns (SentMessage);
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
   // SendMedia sends a media message (photo, document, geo, contact, poll).
-  rpc SendMedia(OutgoingMedia) returns (SentMedia);
+  rpc SendMedia(SendMediaRequest) returns (SendMediaResponse);
   // SendMultiMedia sends an album of multiple media items.
-  rpc SendMultiMedia(OutgoingMultiMedia) returns (SentMultiMedia);
+  rpc SendMultiMedia(SendMultiMediaRequest) returns (SendMultiMediaResponse);
   // EditMessage edits an existing message's content or media.
-  rpc EditMessage(MessageEdit) returns (EditedMessage);
+  rpc EditMessage(EditMessageRequest) returns (EditMessageResponse);
   // SetTyping broadcasts a typing indicator to conversation participants.
-  rpc SetTyping(TypingIndicator) returns (TypingAck);
+  rpc SetTyping(SetTypingRequest) returns (SetTypingResponse);
   // SendStartBot starts a bot interaction with a start parameter.
-  rpc SendStartBot(BotStart) returns (BotResponse);
+  rpc SendStartBot(SendStartBotRequest) returns (SendStartBotResponse);
 
   // ---- Search (1 RPC) ----
 
   // Search searches messages within a conversation or globally.
-  rpc Search(SearchQuery) returns (SearchResults);
+  rpc Search(SearchRequest) returns (SearchResponse);
 
   // ---- Reactions (7 RPCs) ----
 
   // GetMessagesReactions returns reaction summaries for multiple messages.
-  rpc GetMessagesReactions(ReactionsQuery) returns (MessagesReactions);
+  rpc GetMessagesReactions(GetMessagesReactionsRequest) returns (GetMessagesReactionsResponse);
   // GetMessageReactionsList returns individual reactors for a message.
-  rpc GetMessageReactionsList(ReactionListQuery) returns (ReactionList);
+  rpc GetMessageReactionsList(GetMessageReactionsListRequest) returns (GetMessageReactionsListResponse);
   // SendReaction adds or removes reactions on a message.
-  rpc SendReaction(ReactionToggle) returns (ReactionUpdate);
+  rpc SendReaction(SendReactionRequest) returns (SendReactionResponse);
   // GetUnreadMentions returns messages mentioning the authenticated user.
-  rpc GetUnreadMentions(UnreadMentionsQuery) returns (UnreadMentions);
+  rpc GetUnreadMentions(GetUnreadMentionsRequest) returns (GetUnreadMentionsResponse);
   // ReadMentions marks all mentions in a conversation as read.
-  rpc ReadMentions(MentionsReadMark) returns (MentionsReadReceipt);
+  rpc ReadMentions(ReadMentionsRequest) returns (ReadMentionsResponse);
   // GetUnreadReactions returns messages with new reactions for the authenticated user.
-  rpc GetUnreadReactions(UnreadReactionsQuery) returns (UnreadReactions);
+  rpc GetUnreadReactions(GetUnreadReactionsRequest) returns (GetUnreadReactionsResponse);
   // ReadReactions marks all reactions in a conversation as read.
-  rpc ReadReactions(ReactionsReadMark) returns (ReactionsReadReceipt);
+  rpc ReadReactions(ReadReactionsRequest) returns (ReadReactionsResponse);
 
   // ---- Polls & Votes (3 RPCs) ----
 
   // SendVote records or retracts a vote on a poll.
-  rpc SendVote(VoteSubmission) returns (VoteUpdate);
+  rpc SendVote(SendVoteRequest) returns (SendVoteResponse);
   // GetPollVotes returns per-option voter lists with pagination.
-  rpc GetPollVotes(PollVotesQuery) returns (PollVoters);
+  rpc GetPollVotes(GetPollVotesRequest) returns (GetPollVotesResponse);
   // GetPollResults returns current poll results.
-  rpc GetPollResults(PollResultsQuery) returns (PollResults);
+  rpc GetPollResults(GetPollResultsRequest) returns (GetPollResultsResponse);
 
   // ---- Threaded (2 RPCs) ----
 
   // ReadThread marks thread messages as read up to a specified ID.
-  rpc ReadThread(ThreadReadMark) returns (ThreadReadReceipt);
+  rpc ReadThread(ReadThreadRequest) returns (ReadThreadResponse);
   // GetThreadMessage returns thread replies with pagination.
-  rpc GetThreadMessage(ThreadQuery) returns (ThreadMessages);
+  rpc GetThreadMessage(GetThreadMessageRequest) returns (GetThreadMessageResponse);
 }
 
 // =============================================================================
@@ -497,9 +500,9 @@ message SingleMediaInput {
 // Dialog & History RPC messages
 // =============================================================================
 
-// DialogQuery is the request for GetDialogs.
+// GetDialogsRequest requests the authenticated user's dialog list.
 // Supports cursor-based pagination and conditional fetching via hash.
-message DialogQuery {
+message GetDialogsRequest {
   // space_id filters dialogs to a specific workspace/space. Omit to retrieve all.
   optional int64 space_id = 1;
   // offset_date is a Unix epoch timestamp (seconds) of the last dialog's top message date.
@@ -520,17 +523,17 @@ message DialogQuery {
   int64 hash = 5;
 }
 
-// DialogList is the response for GetDialogs.
-message DialogList {
+// GetDialogsResponse is the response for GetDialogs.
+message GetDialogsResponse {
   repeated Dialog dialogs = 1;
   repeated Message messages = 2;
   repeated User users = 3;
   repeated Chat chats = 4;
 }
 
-// HistoryQuery is the request for GetHistory.
+// GetHistoryRequest requests message history for a conversation.
 // Supports bidirectional cursor pagination within a conversation.
-message HistoryQuery {
+message GetHistoryRequest {
   // peer identifies the conversation to fetch history from (required).
   PeerInput peer = 1;
   // offset_id is the message ID to start pagination from.
@@ -554,8 +557,8 @@ message HistoryQuery {
   optional int64 min_id = 7;
 }
 
-// MessageHistory is the response for GetHistory.
-message MessageHistory {
+// GetHistoryResponse is the response for GetHistory.
+message GetHistoryResponse {
   repeated Message messages = 1;
   repeated User users = 2;
   repeated Chat chats = 3;
@@ -563,19 +566,19 @@ message MessageHistory {
   optional int64 offset_id_offset = 5;
 }
 
-// HistoryReadMark is the request for ReadHistory.
-message HistoryReadMark {
+// ReadHistoryRequest marks messages as read in a conversation.
+message ReadHistoryRequest {
   PeerInput peer = 1;
   int64 max_id = 2;
 }
 
-// ReadReceipt is the response for ReadHistory.
-message ReadReceipt {
+// ReadHistoryResponse confirms the read state update.
+message ReadHistoryResponse {
   bool success = 1;
 }
 
-// HistoryDeletion is the request for DeleteHistory.
-message HistoryDeletion {
+// DeleteHistoryRequest specifies a conversation history range to delete.
+message DeleteHistoryRequest {
   PeerInput peer = 1;
   int64 max_id = 2;
   optional bool revoke = 3;
@@ -583,21 +586,21 @@ message HistoryDeletion {
   optional int32 max_date = 5;
 }
 
-// AffectedHistory is the response for DeleteHistory.
-message AffectedHistory {
+// DeleteHistoryResponse reports the deletion offset.
+message DeleteHistoryResponse {
   bool success = 1;
   int32 offset = 2;
 }
 
-// MessageDeletion is the request for DeleteMessages.
-message MessageDeletion {
+// DeleteMessagesRequest specifies messages to delete.
+message DeleteMessagesRequest {
   PeerInput peer = 1;
   repeated int64 message_ids = 2;
   optional bool revoke = 3;
 }
 
-// AffectedMessages is the response for DeleteMessages.
-message AffectedMessages {
+// DeleteMessagesResponse reports the deletion count.
+message DeleteMessagesResponse {
   int32 deleted_count = 1;
 }
 
@@ -605,70 +608,70 @@ message AffectedMessages {
 // Chat Creation & Structure RPC messages
 // =============================================================================
 
-// NewChat is the request for CreateChat.
-message NewChat {
+// CreateChatRequest specifies the initial state of a new group chat.
+message CreateChatRequest {
   string title = 1;
   repeated int64 user_ids = 2;
   optional int32 ttl_period = 3;
 }
 
-// CreatedChat is the response for CreateChat.
-message CreatedChat {
+// CreateChatResponse is the response for CreateChat.
+message CreateChatResponse {
   Chat chat = 1;
   repeated User users = 2;
   repeated MissingInvitee missing = 3;
 }
 
-// ChatTitleEdit is the request for EditChatTitle.
-message ChatTitleEdit {
+// EditChatTitleRequest updates a chat's title.
+message EditChatTitleRequest {
   int64 chat_id = 1;
   string title = 2;
 }
 
-// ChatTitleUpdated is the response for EditChatTitle.
-message ChatTitleUpdated {
+// EditChatTitleResponse confirms the title update.
+message EditChatTitleResponse {
   bool success = 1;
 }
 
-// ChatPhotoEdit is the request for EditChatPhoto.
-message ChatPhotoEdit {
+// EditChatPhotoRequest updates or removes a chat's photo.
+message EditChatPhotoRequest {
   int64 chat_id = 1;
   PhotoInput photo = 2;
 }
 
-// ChatPhotoUpdated is the response for EditChatPhoto.
-message ChatPhotoUpdated {
+// EditChatPhotoResponse confirms the photo update.
+message EditChatPhotoResponse {
   bool success = 1;
 }
 
-// ChatAboutEdit is the request for EditChatAbout.
-message ChatAboutEdit {
+// EditChatAboutRequest updates a chat's description.
+message EditChatAboutRequest {
   int64 chat_id = 1;
   string about = 2;
 }
 
-// ChatAboutUpdated is the response for EditChatAbout.
-message ChatAboutUpdated {
+// EditChatAboutResponse confirms the about update.
+message EditChatAboutResponse {
   bool success = 1;
 }
 
-// ChatLookup is the request for GetChats.
-message ChatLookup {
+// GetChatsRequest requests basic info for multiple chats by ID.
+message GetChatsRequest {
   repeated int64 chat_ids = 1;
 }
 
-// Chats is the response for GetChats.
-message Chats {
+// GetChatsResponse is the response for GetChats.
+message GetChatsResponse {
   repeated Chat chats = 1;
 }
 
-// ChatDetailQuery is the request for GetChatComplete.
-message ChatDetailQuery {
+// GetChatCompleteRequest requests full details for a specific chat.
+message GetChatCompleteRequest {
   int64 chat_id = 1;
 }
 
-// ChatDetail is the response for GetChatComplete.
-message ChatDetail {
+// GetChatCompleteResponse is the response for GetChatComplete.
+message GetChatCompleteResponse {
   ChatComplete chat_complete = 1;
 }
 
@@ -676,52 +679,52 @@ message ChatDetail {
 // Participants & Scopes RPC messages
 // =============================================================================
 
-// ParticipantAddition is the request for AddChatParticipant.
-message ParticipantAddition {
+// AddChatParticipantRequest adds a user to a group chat.
+message AddChatParticipantRequest {
   int64 chat_id = 1;
   int64 user_id = 2;
   int32 forward_limit = 3;
 }
 
-// ParticipantAdded is the response for AddChatParticipant.
-message ParticipantAdded {
+// AddChatParticipantResponse is the response for AddChatParticipant.
+message AddChatParticipantResponse {
   repeated MissingInvitee missing = 1;
   repeated User users = 2;
 }
 
-// ParticipantRemoval is the request for RemoveChatParticipant.
-message ParticipantRemoval {
+// RemoveChatParticipantRequest removes a user from a group chat.
+message RemoveChatParticipantRequest {
   int64 chat_id = 1;
   int64 user_id = 2;
 }
 
-// ParticipantRemoved is the response for RemoveChatParticipant.
-message ParticipantRemoved {
+// RemoveChatParticipantResponse confirms removal.
+message RemoveChatParticipantResponse {
   bool success = 1;
 }
 
-// AdminEdit is the request for EditChatAdmin.
-message AdminEdit {
+// EditChatAdminRequest promotes or demotes a chat admin.
+message EditChatAdminRequest {
   int64 chat_id = 1;
   int64 user_id = 2;
   bool is_admin = 3;
 }
 
-// AdminUpdated is the response for EditChatAdmin.
-message AdminUpdated {
+// EditChatAdminResponse confirms the admin update.
+message EditChatAdminResponse {
   bool success = 1;
 }
 
-// ScopesEdit is the request for EditChatRestrictedScopes.
-message ScopesEdit {
+// EditChatRestrictedScopesRequest applies restricted permissions to a user in a chat.
+message EditChatRestrictedScopesRequest {
   int64 chat_id = 1;
   int64 user_id = 2;
   repeated ChatRestrictedScope restricted_scopes = 3;
   optional google.protobuf.Timestamp until_date = 4;
 }
 
-// ScopesUpdated is the response for EditChatRestrictedScopes.
-message ScopesUpdated {
+// EditChatRestrictedScopesResponse confirms the scopes update.
+message EditChatRestrictedScopesResponse {
   bool success = 1;
 }
 
@@ -729,19 +732,19 @@ message ScopesUpdated {
 // TTL, Pinned, Scheduled RPC messages
 // =============================================================================
 
-// HistoryTTL is the request for SetHistoryTTL.
-message HistoryTTL {
+// SetHistoryTTLRequest configures auto-delete timer for a conversation.
+message SetHistoryTTLRequest {
   PeerInput peer = 1;
   int32 period = 2;
 }
 
-// TTLUpdated is the response for SetHistoryTTL.
-message TTLUpdated {
+// SetHistoryTTLResponse confirms the TTL update.
+message SetHistoryTTLResponse {
   bool success = 1;
 }
 
-// PinAction is the request for UpdatePinnedMessage.
-message PinAction {
+// UpdatePinnedMessageRequest pins or unpins a message in a conversation.
+message UpdatePinnedMessageRequest {
   PeerInput peer = 1;
   int64 message_id = 2;
   optional bool silent = 3;
@@ -749,19 +752,19 @@ message PinAction {
   optional bool pm_oneside = 5;
 }
 
-// PinUpdated is the response for UpdatePinnedMessage.
-message PinUpdated {
+// UpdatePinnedMessageResponse confirms the pin update.
+message UpdatePinnedMessageResponse {
   bool success = 1;
 }
 
-// UnpinAllAction is the request for UnpinAllMessages.
-message UnpinAllAction {
+// UnpinAllMessagesRequest unpins all messages in a conversation or thread.
+message UnpinAllMessagesRequest {
   PeerInput peer = 1;
   optional int64 top_msg_id = 2;
 }
 
-// UnpinSummary is the response for UnpinAllMessages.
-message UnpinSummary {
+// UnpinAllMessagesResponse reports the number of messages unpinned.
+message UnpinAllMessagesResponse {
   int32 unpinned_count = 1;
 }
 
@@ -769,8 +772,8 @@ message UnpinSummary {
 // Sending & Editing RPC messages
 // =============================================================================
 
-// OutgoingMessage is the request for SendMessage.
-message OutgoingMessage {
+// SendMessageRequest is the request to send a text message.
+message SendMessageRequest {
   PeerInput peer = 1;
   string message = 2;
   int64 random_id = 3;
@@ -782,15 +785,15 @@ message OutgoingMessage {
   optional int32 schedule_date = 9;
 }
 
-// SentMessage is the response for SendMessage.
-message SentMessage {
+// SendMessageResponse is the response for SendMessage.
+message SendMessageResponse {
   Message message = 1;
   repeated User users = 2;
   repeated Chat chats = 3;
 }
 
-// OutgoingMedia is the request for SendMedia.
-message OutgoingMedia {
+// SendMediaRequest is the request to send a media message.
+message SendMediaRequest {
   PeerInput peer = 1;
   MediaInput media = 2;
   optional string message = 3;
@@ -803,15 +806,15 @@ message OutgoingMedia {
   optional int32 schedule_date = 10;
 }
 
-// SentMedia is the response for SendMedia.
-message SentMedia {
+// SendMediaResponse is the response for SendMedia.
+message SendMediaResponse {
   Message message = 1;
   repeated User users = 2;
   repeated Chat chats = 3;
 }
 
-// OutgoingMultiMedia is the request for SendMultiMedia.
-message OutgoingMultiMedia {
+// SendMultiMediaRequest sends an album of multiple media items.
+message SendMultiMediaRequest {
   PeerInput peer = 1;
   repeated SingleMediaInput multi_media = 2;
   optional ReplyInput reply_to = 3;
@@ -821,15 +824,15 @@ message OutgoingMultiMedia {
   optional int32 schedule_date = 7;
 }
 
-// SentMultiMedia is the response for SendMultiMedia.
-message SentMultiMedia {
+// SendMultiMediaResponse is the response for SendMultiMedia.
+message SendMultiMediaResponse {
   repeated Message messages = 1;
   repeated User users = 2;
   repeated Chat chats = 3;
 }
 
-// MessageEdit is the request for EditMessage.
-message MessageEdit {
+// EditMessageRequest edits an existing message's content or media.
+message EditMessageRequest {
   PeerInput peer = 1;
   int64 message_id = 2;
   optional string message = 3;
@@ -839,35 +842,35 @@ message MessageEdit {
   optional int32 schedule_date = 7;
 }
 
-// EditedMessage is the response for EditMessage.
-message EditedMessage {
+// EditMessageResponse is the response for EditMessage.
+message EditMessageResponse {
   Message message = 1;
   repeated User users = 2;
   repeated Chat chats = 3;
 }
 
-// TypingIndicator is the request for SetTyping.
-message TypingIndicator {
+// SetTypingRequest broadcasts a typing indicator to conversation participants.
+message SetTypingRequest {
   PeerInput peer = 1;
   TypingAction action = 2;
   optional int64 top_msg_id = 3;
 }
 
-// TypingAck is the response for SetTyping.
-message TypingAck {
+// SetTypingResponse acknowledges the typing indicator.
+message SetTypingResponse {
   bool success = 1;
 }
 
-// BotStart is the request for SendStartBot.
-message BotStart {
+// SendStartBotRequest starts a bot interaction with a start parameter.
+message SendStartBotRequest {
   PeerInput bot = 1;
   PeerInput peer = 2;
   string start_param = 3;
   int64 random_id = 4;
 }
 
-// BotResponse is the response for SendStartBot.
-message BotResponse {
+// SendStartBotResponse is the response for SendStartBot.
+message SendStartBotResponse {
   Message message = 1;
   repeated User users = 2;
   repeated Chat chats = 3;
@@ -877,8 +880,8 @@ message BotResponse {
 // Search RPC messages
 // =============================================================================
 
-// SearchQuery is the request for Search.
-message SearchQuery {
+// SearchRequest is the request for Search.
+message SearchRequest {
   PeerInput peer = 1;
   string query = 2;
   optional PeerInput from_peer = 3;
@@ -893,8 +896,8 @@ message SearchQuery {
   optional int64 min_id = 12;
 }
 
-// SearchResults is the response for Search.
-message SearchResults {
+// SearchResponse is the response for Search.
+message SearchResponse {
   repeated Message messages = 1;
   repeated User users = 2;
   repeated Chat chats = 3;
@@ -906,19 +909,19 @@ message SearchResults {
 // Reactions RPC messages
 // =============================================================================
 
-// ReactionsQuery is the request for GetMessagesReactions.
-message ReactionsQuery {
+// GetMessagesReactionsRequest requests reaction summaries for multiple messages.
+message GetMessagesReactionsRequest {
   PeerInput peer = 1;
   repeated int64 message_ids = 2;
 }
 
-// MessagesReactions is the response for GetMessagesReactions.
-message MessagesReactions {
+// GetMessagesReactionsResponse is the response for GetMessagesReactions.
+message GetMessagesReactionsResponse {
   repeated MessageReactions reactions = 1;
 }
 
-// ReactionListQuery is the request for GetMessageReactionsList.
-message ReactionListQuery {
+// GetMessageReactionsListRequest requests individual reactors for a message.
+message GetMessageReactionsListRequest {
   PeerInput peer = 1;
   int64 message_id = 2;
   optional Reaction reaction = 3;
@@ -926,16 +929,16 @@ message ReactionListQuery {
   int32 limit = 5;
 }
 
-// ReactionList is the response for GetMessageReactionsList.
-message ReactionList {
+// GetMessageReactionsListResponse is the response for GetMessageReactionsList.
+message GetMessageReactionsListResponse {
   repeated PeerReaction reactions = 1;
   int32 count = 2;
   optional string next_offset = 3;
   repeated User users = 4;
 }
 
-// ReactionToggle is the request for SendReaction.
-message ReactionToggle {
+// SendReactionRequest adds or removes reactions on a message.
+message SendReactionRequest {
   PeerInput peer = 1;
   int64 message_id = 2;
   repeated Reaction reactions = 3;
@@ -943,15 +946,15 @@ message ReactionToggle {
   optional bool add_to_recent = 5;
 }
 
-// ReactionUpdate is the response for SendReaction.
-message ReactionUpdate {
+// SendReactionResponse is the response for SendReaction.
+message SendReactionResponse {
   Message message = 1;
   repeated User users = 2;
   repeated Chat chats = 3;
 }
 
-// UnreadMentionsQuery is the request for GetUnreadMentions.
-message UnreadMentionsQuery {
+// GetUnreadMentionsRequest requests messages mentioning the authenticated user.
+message GetUnreadMentionsRequest {
   PeerInput peer = 1;
   optional int64 top_msg_id = 2;
   int64 offset_id = 3;
@@ -961,27 +964,27 @@ message UnreadMentionsQuery {
   optional int64 min_id = 7;
 }
 
-// UnreadMentions is the response for GetUnreadMentions.
-message UnreadMentions {
+// GetUnreadMentionsResponse is the response for GetUnreadMentions.
+message GetUnreadMentionsResponse {
   repeated Message messages = 1;
   repeated User users = 2;
   repeated Chat chats = 3;
   int32 count = 4;
 }
 
-// MentionsReadMark is the request for ReadMentions.
-message MentionsReadMark {
+// ReadMentionsRequest marks all mentions in a conversation as read.
+message ReadMentionsRequest {
   PeerInput peer = 1;
   optional int64 top_msg_id = 2;
 }
 
-// MentionsReadReceipt is the response for ReadMentions.
-message MentionsReadReceipt {
+// ReadMentionsResponse confirms mentions are read.
+message ReadMentionsResponse {
   bool success = 1;
 }
 
-// UnreadReactionsQuery is the request for GetUnreadReactions.
-message UnreadReactionsQuery {
+// GetUnreadReactionsRequest requests messages with new reactions for the user.
+message GetUnreadReactionsRequest {
   PeerInput peer = 1;
   optional int64 top_msg_id = 2;
   int64 offset_id = 3;
@@ -991,22 +994,22 @@ message UnreadReactionsQuery {
   optional int64 min_id = 7;
 }
 
-// UnreadReactions is the response for GetUnreadReactions.
-message UnreadReactions {
+// GetUnreadReactionsResponse is the response for GetUnreadReactions.
+message GetUnreadReactionsResponse {
   repeated Message messages = 1;
   repeated User users = 2;
   repeated Chat chats = 3;
   int32 count = 4;
 }
 
-// ReactionsReadMark is the request for ReadReactions.
-message ReactionsReadMark {
+// ReadReactionsRequest marks all reactions in a conversation as read.
+message ReadReactionsRequest {
   PeerInput peer = 1;
   optional int64 top_msg_id = 2;
 }
 
-// ReactionsReadReceipt is the response for ReadReactions.
-message ReactionsReadReceipt {
+// ReadReactionsResponse confirms reactions are read.
+message ReadReactionsResponse {
   bool success = 1;
 }
 
@@ -1014,22 +1017,22 @@ message ReactionsReadReceipt {
 // Polls & Votes RPC messages
 // =============================================================================
 
-// VoteSubmission is the request for SendVote.
-message VoteSubmission {
+// SendVoteRequest records or retracts a vote on a poll.
+message SendVoteRequest {
   PeerInput peer = 1;
   int64 message_id = 2;
   repeated bytes options = 3;
 }
 
-// VoteUpdate is the response for SendVote.
-message VoteUpdate {
+// SendVoteResponse is the response for SendVote.
+message SendVoteResponse {
   Message message = 1;
   repeated User users = 2;
   repeated Chat chats = 3;
 }
 
-// PollVotesQuery is the request for GetPollVotes.
-message PollVotesQuery {
+// GetPollVotesRequest requests per-option voter lists with pagination.
+message GetPollVotesRequest {
   PeerInput peer = 1;
   int64 message_id = 2;
   optional bytes option = 3;
@@ -1037,22 +1040,22 @@ message PollVotesQuery {
   int32 limit = 5;
 }
 
-// PollVoters is the response for GetPollVotes.
-message PollVoters {
+// GetPollVotesResponse is the response for GetPollVotes.
+message GetPollVotesResponse {
   int32 count = 1;
   repeated PollVoter voters = 2;
   optional string next_offset = 3;
   repeated User users = 4;
 }
 
-// PollResultsQuery is the request for GetPollResults.
-message PollResultsQuery {
+// GetPollResultsRequest requests current poll results.
+message GetPollResultsRequest {
   PeerInput peer = 1;
   int64 message_id = 2;
 }
 
-// PollResults is the response for GetPollResults.
-message PollResults {
+// GetPollResultsResponse is the response for GetPollResults.
+message GetPollResultsResponse {
   Message message = 1;
   repeated User users = 2;
   repeated Chat chats = 3;
@@ -1062,20 +1065,20 @@ message PollResults {
 // Threaded RPC messages
 // =============================================================================
 
-// ThreadReadMark is the request for ReadThread.
-message ThreadReadMark {
+// ReadThreadRequest marks thread messages as read up to a specified ID.
+message ReadThreadRequest {
   PeerInput peer = 1;
   int64 top_msg_id = 2;
   int64 read_max_id = 3;
 }
 
-// ThreadReadReceipt is the response for ReadThread.
-message ThreadReadReceipt {
+// ReadThreadResponse confirms thread messages are read.
+message ReadThreadResponse {
   bool success = 1;
 }
 
-// ThreadQuery is the request for GetThreadMessage.
-message ThreadQuery {
+// GetThreadMessageRequest requests thread replies with pagination.
+message GetThreadMessageRequest {
   PeerInput peer = 1;
   int64 message_id = 2;
   optional int64 offset_id = 3;
@@ -1086,8 +1089,8 @@ message ThreadQuery {
   optional int64 min_id = 8;
 }
 
-// ThreadMessages is the response for GetThreadMessage.
-message ThreadMessages {
+// GetThreadMessageResponse is the response for GetThreadMessage.
+message GetThreadMessageResponse {
   repeated Message messages = 1;
   repeated User users = 2;
   repeated Chat chats = 3;

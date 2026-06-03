@@ -12,53 +12,97 @@ option go_package = "github.com/tinklehq/tinkle-server/proto/tinkle/v1;tinklev1"
 // BotApiService is the external-facing gRPC service that bot developers call.
 // This controller is stateless — it validates the bot token, then forwards to internal BotService.
 service BotApiService {
-  // ── Self-Info ──
+  // GetMe retrieves the bot's own profile.
   rpc GetMe(GetMeRequest) returns (GetMeResponse);
 
-  // ── Sending Messages ──
-  rpc SendMessage(BotApiSendMessageRequest) returns (BotApiSendMessageResponse);
-  rpc SendPhoto(BotApiSendPhotoRequest) returns (BotApiSendMediaResponse);
-  rpc SendDocument(BotApiSendDocumentRequest) returns (BotApiSendMediaResponse);
-  rpc SendVideo(BotApiSendVideoRequest) returns (BotApiSendMediaResponse);
-  rpc SendAudio(BotApiSendAudioRequest) returns (BotApiSendMediaResponse);
-  rpc SendVoice(BotApiSendVoiceRequest) returns (BotApiSendMediaResponse);
-  rpc SendSticker(BotApiSendStickerRequest) returns (BotApiSendMediaResponse);
-  rpc SendLocation(BotApiSendLocationRequest) returns (BotApiSendMediaResponse);
-  rpc SendContact(BotApiSendContactRequest) returns (BotApiSendMediaResponse);
-  rpc ForwardMessage(BotApiForwardMessageRequest) returns (BotApiForwardMessageResponse);
-  rpc CopyMessage(BotApiCopyMessageRequest) returns (BotApiCopyMessageResponse);
+  // SendMessage sends a text message to a chat.
+  rpc SendMessage(BotApiServiceSendMessageRequest) returns (BotApiServiceSendMessageResponse);
 
-  // ── Updating Messages ──
-  rpc EditMessageText(BotApiEditMessageTextRequest) returns (BotApiEditMessageResponse);
-  rpc EditMessageCaption(BotApiEditMessageCaptionRequest) returns (BotApiEditMessageResponse);
-  rpc EditMessageMedia(BotApiEditMessageMediaRequest) returns (BotApiEditMessageResponse);
-  rpc EditMessageReplyMarkup(BotApiEditMessageReplyMarkupRequest) returns (BotApiEditMessageResponse);
-  rpc DeleteMessage(BotApiDeleteMessageRequest) returns (BotApiDeleteMessageResponse);
+  // SendPhoto sends a photo to a chat.
+  rpc SendPhoto(SendPhotoRequest) returns (SendPhotoResponse);
 
-  // ── Chat Information ──
-  rpc GetChat(BotApiGetChatRequest) returns (BotApiGetChatResponse);
-  rpc GetChatParticipant(BotApiGetChatParticipantRequest) returns (BotApiGetChatParticipantResponse);
-  rpc GetChatParticipantCount(BotApiGetChatParticipantCountRequest) returns (BotApiGetChatParticipantCountResponse);
+  // SendDocument sends a document to a chat.
+  rpc SendDocument(SendDocumentRequest) returns (SendDocumentResponse);
 
-  // ── Chat Administration ──
-  rpc BanChatParticipant(BotApiBanChatParticipantRequest) returns (BotApiBanChatParticipantResponse);
-  rpc UnbanChatParticipant(BotApiUnbanChatParticipantRequest) returns (BotApiUnbanChatParticipantResponse);
-  rpc RestrictChatParticipant(BotApiRestrictChatParticipantRequest) returns (BotApiRestrictChatParticipantResponse);
-  rpc PromoteChatParticipant(BotApiPromoteChatParticipantRequest) returns (BotApiPromoteChatParticipantResponse);
-  rpc LeaveChat(BotApiLeaveChatRequest) returns (BotApiLeaveChatResponse);
+  // SendVideo sends a video to a chat.
+  rpc SendVideo(SendVideoRequest) returns (SendVideoResponse);
 
-  // ── Webhook Management ──
-  rpc SetWebhook(BotApiSetWebhookRequest) returns (BotApiSetWebhookResponse);
-  rpc DeleteWebhook(BotApiDeleteWebhookRequest) returns (BotApiDeleteWebhookResponse);
-  rpc GetWebhookInfo(BotApiGetWebhookInfoRequest) returns (BotApiGetWebhookInfoResponse);
+  // SendAudio sends an audio file to a chat.
+  rpc SendAudio(SendAudioRequest) returns (SendAudioResponse);
 
-  // ── Callback Queries ──
-  rpc AnswerCallbackQuery(BotApiAnswerCallbackQueryRequest) returns (BotApiAnswerCallbackQueryResponse);
+  // SendVoice sends a voice message to a chat.
+  rpc SendVoice(SendVoiceRequest) returns (SendVoiceResponse);
+
+  // SendSticker sends a sticker to a chat.
+  rpc SendSticker(SendStickerRequest) returns (SendStickerResponse);
+
+  // SendLocation sends a location to a chat.
+  rpc SendLocation(SendLocationRequest) returns (SendLocationResponse);
+
+  // SendContact sends a contact card to a chat.
+  rpc SendContact(SendContactRequest) returns (SendContactResponse);
+
+  // ForwardMessage forwards a message to another chat.
+  rpc ForwardMessage(ForwardMessageRequest) returns (ForwardMessageResponse);
+
+  // CopyMessage copies a message to another chat.
+  rpc CopyMessage(CopyMessageRequest) returns (CopyMessageResponse);
+
+  // EditMessageText edits the text of a message.
+  rpc EditMessageText(EditMessageTextRequest) returns (EditMessageTextResponse);
+
+  // EditMessageCaption edits the caption of a message.
+  rpc EditMessageCaption(EditMessageCaptionRequest) returns (EditMessageCaptionResponse);
+
+  // EditMessageMedia edits the media of a message.
+  rpc EditMessageMedia(EditMessageMediaRequest) returns (EditMessageMediaResponse);
+
+  // EditMessageReplyMarkup edits the inline keyboard of a message.
+  rpc EditMessageReplyMarkup(EditMessageReplyMarkupRequest) returns (EditMessageReplyMarkupResponse);
+
+  // DeleteMessage deletes a message.
+  rpc DeleteMessage(DeleteMessageRequest) returns (DeleteMessageResponse);
+
+  // GetChat retrieves chat information.
+  rpc GetChat(GetChatRequest) returns (GetChatResponse);
+
+  // GetChatParticipant retrieves a chat participant's status and rights.
+  rpc GetChatParticipant(GetChatParticipantRequest) returns (GetChatParticipantResponse);
+
+  // GetChatParticipantCount retrieves the number of participants in a chat.
+  rpc GetChatParticipantCount(GetChatParticipantCountRequest) returns (GetChatParticipantCountResponse);
+
+  // BanChatParticipant bans a user from a chat.
+  rpc BanChatParticipant(BanChatParticipantRequest) returns (BanChatParticipantResponse);
+
+  // UnbanChatParticipant unbans a user from a chat.
+  rpc UnbanChatParticipant(UnbanChatParticipantRequest) returns (UnbanChatParticipantResponse);
+
+  // RestrictChatParticipant restricts a user's permissions in a chat.
+  rpc RestrictChatParticipant(RestrictChatParticipantRequest) returns (RestrictChatParticipantResponse);
+
+  // PromoteChatParticipant promotes a user to admin in a chat.
+  rpc PromoteChatParticipant(PromoteChatParticipantRequest) returns (PromoteChatParticipantResponse);
+
+  // LeaveChat makes the bot leave a chat.
+  rpc LeaveChat(LeaveChatRequest) returns (LeaveChatResponse);
+
+  // SetWebhook configures a webhook for the bot.
+  rpc SetWebhook(SetWebhookRequest) returns (SetWebhookResponse);
+
+  // DeleteWebhook removes the bot's webhook.
+  rpc DeleteWebhook(DeleteWebhookRequest) returns (DeleteWebhookResponse);
+
+  // GetWebhookInfo retrieves the bot's webhook configuration.
+  rpc GetWebhookInfo(GetWebhookInfoRequest) returns (GetWebhookInfoResponse);
+
+  // AnswerCallbackQuery answers a callback query from an inline keyboard.
+  rpc AnswerCallbackQuery(AnswerCallbackQueryRequest) returns (AnswerCallbackQueryResponse);
 }
 
-// ════════════════════════════════════════════════════════════════════
+// =============================================================================
 // Self-Info
-// ════════════════════════════════════════════════════════════════════
+// =============================================================================
 
 // GetMeRequest retrieves the bot's own profile. No fields — identity from token.
 message GetMeRequest {}
@@ -79,12 +123,12 @@ message GetMeResponse {
   bool supports_inline_queries = 6;
 }
 
-// ════════════════════════════════════════════════════════════════════
+// =============================================================================
 // Sending Messages
-// ════════════════════════════════════════════════════════════════════
+// =============================================================================
 
-// BotApiSendMessageRequest sends a text message.
-message BotApiSendMessageRequest {
+// BotApiServiceSendMessageRequest sends a text message.
+message BotApiServiceSendMessageRequest {
   // Target chat ID.
   int64 chat_id = 1;
   // Message text content. Must not be empty.
@@ -94,41 +138,41 @@ message BotApiSendMessageRequest {
   // Message ID to reply to.
   optional int64 reply_to_message_id = 4;
   // Inline keyboard attached to the message.
-  optional BotApiInlineKeyboardMarkup reply_markup = 5;
+  optional InlineKeyboardMarkup reply_markup = 5;
   // Send silently without notification sound.
   optional bool disable_notification = 6;
 }
 
-// BotApiSendMessageResponse returns the sent message metadata.
-message BotApiSendMessageResponse {
+// BotApiServiceSendMessageResponse returns the sent message metadata.
+message BotApiServiceSendMessageResponse {
   int64 message_id = 1;
   google.protobuf.Timestamp date = 2;
 }
 
-// BotApiSendPhotoRequest sends a photo message.
-message BotApiSendPhotoRequest {
+// SendPhotoRequest sends a photo message.
+message SendPhotoRequest {
   int64 chat_id = 1;
   int64 photo = 2;
   optional string caption = 3;
   optional string parse_mode = 4;
   optional int64 reply_to_message_id = 5;
-  optional BotApiInlineKeyboardMarkup reply_markup = 6;
+  optional InlineKeyboardMarkup reply_markup = 6;
   optional bool disable_notification = 7;
 }
 
-// BotApiSendDocumentRequest sends a document message.
-message BotApiSendDocumentRequest {
+// SendDocumentRequest sends a document message.
+message SendDocumentRequest {
   int64 chat_id = 1;
   int64 document = 2;
   optional string caption = 3;
   optional string parse_mode = 4;
   optional int64 reply_to_message_id = 5;
-  optional BotApiInlineKeyboardMarkup reply_markup = 6;
+  optional InlineKeyboardMarkup reply_markup = 6;
   optional bool disable_notification = 7;
 }
 
-// BotApiSendVideoRequest sends a video message.
-message BotApiSendVideoRequest {
+// SendVideoRequest sends a video message.
+message SendVideoRequest {
   int64 chat_id = 1;
   int64 video = 2;
   optional string caption = 3;
@@ -137,12 +181,12 @@ message BotApiSendVideoRequest {
   optional int32 width = 6;
   optional int32 height = 7;
   optional int64 reply_to_message_id = 8;
-  optional BotApiInlineKeyboardMarkup reply_markup = 9;
+  optional InlineKeyboardMarkup reply_markup = 9;
   optional bool disable_notification = 10;
 }
 
-// BotApiSendAudioRequest sends an audio message.
-message BotApiSendAudioRequest {
+// SendAudioRequest sends an audio message.
+message SendAudioRequest {
   int64 chat_id = 1;
   int64 audio = 2;
   optional string caption = 3;
@@ -151,33 +195,33 @@ message BotApiSendAudioRequest {
   optional string performer = 6;
   optional string title = 7;
   optional int64 reply_to_message_id = 8;
-  optional BotApiInlineKeyboardMarkup reply_markup = 9;
+  optional InlineKeyboardMarkup reply_markup = 9;
   optional bool disable_notification = 10;
 }
 
-// BotApiSendVoiceRequest sends a voice message.
-message BotApiSendVoiceRequest {
+// SendVoiceRequest sends a voice message.
+message SendVoiceRequest {
   int64 chat_id = 1;
   int64 voice = 2;
   optional string caption = 3;
   optional string parse_mode = 4;
   optional int32 duration = 5;
   optional int64 reply_to_message_id = 6;
-  optional BotApiInlineKeyboardMarkup reply_markup = 7;
+  optional InlineKeyboardMarkup reply_markup = 7;
   optional bool disable_notification = 8;
 }
 
-// BotApiSendStickerRequest sends a sticker message.
-message BotApiSendStickerRequest {
+// SendStickerRequest sends a sticker message.
+message SendStickerRequest {
   int64 chat_id = 1;
   int64 sticker = 2;
   optional int64 reply_to_message_id = 3;
-  optional BotApiInlineKeyboardMarkup reply_markup = 4;
+  optional InlineKeyboardMarkup reply_markup = 4;
   optional bool disable_notification = 5;
 }
 
-// BotApiSendLocationRequest sends a location message.
-message BotApiSendLocationRequest {
+// SendLocationRequest sends a location message.
+message SendLocationRequest {
   // Target chat ID.
   int64 chat_id = 1;
   // Latitude in degrees (-90.0 to 90.0).
@@ -189,123 +233,198 @@ message BotApiSendLocationRequest {
   // Message ID to reply to.
   optional int64 reply_to_message_id = 5;
   // Inline keyboard attached to the message.
-  optional BotApiInlineKeyboardMarkup reply_markup = 6;
+  optional InlineKeyboardMarkup reply_markup = 6;
   // Send silently without notification sound.
   optional bool disable_notification = 7;
 }
 
-// BotApiSendContactRequest sends a contact message.
-message BotApiSendContactRequest {
+// SendContactRequest sends a contact message.
+message SendContactRequest {
   int64 chat_id = 1;
   string phone_number = 2;
   string first_name = 3;
   optional string last_name = 4;
   optional string vcard = 5;
   optional int64 reply_to_message_id = 6;
-  optional BotApiInlineKeyboardMarkup reply_markup = 7;
+  optional InlineKeyboardMarkup reply_markup = 7;
   optional bool disable_notification = 8;
 }
 
-// BotApiSendMediaResponse is the common response for all media send RPCs.
-message BotApiSendMediaResponse {
+// BotApiServiceSendMediaResponse is kept as a common envelope shared by all media-send RPCs
+// via a oneof field, allowing handlers to populate a single response shape.
+//
+// Deprecated: use the per-method response (e.g. SendPhotoResponse) directly.
+message BotApiServiceSendMediaResponse {
+  option deprecated = true;
   int64 message_id = 1;
   google.protobuf.Timestamp date = 2;
 }
 
-// BotApiForwardMessageRequest forwards a message to another chat.
-message BotApiForwardMessageRequest {
+// SendPhotoResponse returns the sent photo metadata.
+message SendPhotoResponse {
+  int64 message_id = 1;
+  google.protobuf.Timestamp date = 2;
+}
+
+// SendDocumentResponse returns the sent document metadata.
+message SendDocumentResponse {
+  int64 message_id = 1;
+  google.protobuf.Timestamp date = 2;
+}
+
+// SendVideoResponse returns the sent video metadata.
+message SendVideoResponse {
+  int64 message_id = 1;
+  google.protobuf.Timestamp date = 2;
+}
+
+// SendAudioResponse returns the sent audio metadata.
+message SendAudioResponse {
+  int64 message_id = 1;
+  google.protobuf.Timestamp date = 2;
+}
+
+// SendVoiceResponse returns the sent voice metadata.
+message SendVoiceResponse {
+  int64 message_id = 1;
+  google.protobuf.Timestamp date = 2;
+}
+
+// SendStickerResponse returns the sent sticker metadata.
+message SendStickerResponse {
+  int64 message_id = 1;
+  google.protobuf.Timestamp date = 2;
+}
+
+// SendLocationResponse returns the sent location metadata.
+message SendLocationResponse {
+  int64 message_id = 1;
+  google.protobuf.Timestamp date = 2;
+}
+
+// SendContactResponse returns the sent contact metadata.
+message SendContactResponse {
+  int64 message_id = 1;
+  google.protobuf.Timestamp date = 2;
+}
+
+// ForwardMessageRequest forwards a message to another chat.
+message ForwardMessageRequest {
   int64 chat_id = 1;
   int64 from_chat_id = 2;
   int64 message_id = 3;
   optional bool disable_notification = 4;
 }
 
-// BotApiForwardMessageResponse returns the forwarded message metadata.
-message BotApiForwardMessageResponse {
+// ForwardMessageResponse returns the forwarded message metadata.
+message ForwardMessageResponse {
   int64 message_id = 1;
   google.protobuf.Timestamp date = 2;
 }
 
-// BotApiCopyMessageRequest copies a message to another chat.
-message BotApiCopyMessageRequest {
+// CopyMessageRequest copies a message to another chat.
+message CopyMessageRequest {
   int64 chat_id = 1;
   int64 from_chat_id = 2;
   int64 message_id = 3;
   optional string caption = 4;
   optional string parse_mode = 5;
-  optional BotApiInlineKeyboardMarkup reply_markup = 6;
+  optional InlineKeyboardMarkup reply_markup = 6;
   optional bool disable_notification = 7;
 }
 
-// BotApiCopyMessageResponse returns the copied message ID.
-message BotApiCopyMessageResponse {
+// CopyMessageResponse returns the copied message ID.
+message CopyMessageResponse {
   int64 message_id = 1;
 }
 
-// ════════════════════════════════════════════════════════════════════
+// =============================================================================
 // Updating Messages
-// ════════════════════════════════════════════════════════════════════
+// =============================================================================
 
-// BotApiEditMessageTextRequest edits the text of a message.
-message BotApiEditMessageTextRequest {
+// EditMessageTextRequest edits the text of a message.
+message EditMessageTextRequest {
   int64 chat_id = 1;
   int64 message_id = 2;
   string text = 3;
   optional string parse_mode = 4;
-  optional BotApiInlineKeyboardMarkup reply_markup = 5;
+  optional InlineKeyboardMarkup reply_markup = 5;
 }
 
-// BotApiEditMessageCaptionRequest edits the caption of a message.
-message BotApiEditMessageCaptionRequest {
+// EditMessageCaptionRequest edits the caption of a message.
+message EditMessageCaptionRequest {
   int64 chat_id = 1;
   int64 message_id = 2;
   optional string caption = 3;
   optional string parse_mode = 4;
-  optional BotApiInlineKeyboardMarkup reply_markup = 5;
+  optional InlineKeyboardMarkup reply_markup = 5;
 }
 
-// BotApiEditMessageMediaRequest edits the media of a message.
-message BotApiEditMessageMediaRequest {
+// EditMessageMediaRequest edits the media of a message.
+message EditMessageMediaRequest {
   int64 chat_id = 1;
   int64 message_id = 2;
-  BotApiInputMedia media = 3;
-  optional BotApiInlineKeyboardMarkup reply_markup = 4;
+  InputMedia media = 3;
+  optional InlineKeyboardMarkup reply_markup = 4;
 }
 
-// BotApiEditMessageReplyMarkupRequest edits the reply markup of a message.
-message BotApiEditMessageReplyMarkupRequest {
+// EditMessageReplyMarkupRequest edits the reply markup of a message.
+message EditMessageReplyMarkupRequest {
   int64 chat_id = 1;
   int64 message_id = 2;
-  optional BotApiInlineKeyboardMarkup reply_markup = 3;
+  optional InlineKeyboardMarkup reply_markup = 3;
 }
 
-// BotApiEditMessageResponse indicates whether the edit succeeded.
-message BotApiEditMessageResponse {
+// BotApiServiceEditMessageResponse is the common shape for all edit-message success responses.
+//
+// Deprecated: use the per-method response (e.g. EditMessageTextResponse) directly.
+message BotApiServiceEditMessageResponse {
+  option deprecated = true;
   bool success = 1;
 }
 
-// BotApiDeleteMessageRequest deletes a message.
-message BotApiDeleteMessageRequest {
+// EditMessageTextResponse indicates whether the text edit succeeded.
+message EditMessageTextResponse {
+  bool success = 1;
+}
+
+// EditMessageCaptionResponse indicates whether the caption edit succeeded.
+message EditMessageCaptionResponse {
+  bool success = 1;
+}
+
+// EditMessageMediaResponse indicates whether the media edit succeeded.
+message EditMessageMediaResponse {
+  bool success = 1;
+}
+
+// EditMessageReplyMarkupResponse indicates whether the reply markup edit succeeded.
+message EditMessageReplyMarkupResponse {
+  bool success = 1;
+}
+
+// DeleteMessageRequest deletes a message.
+message DeleteMessageRequest {
   int64 chat_id = 1;
   int64 message_id = 2;
 }
 
-// BotApiDeleteMessageResponse indicates whether the delete succeeded.
-message BotApiDeleteMessageResponse {
+// DeleteMessageResponse indicates whether the delete succeeded.
+message DeleteMessageResponse {
   bool success = 1;
 }
 
-// ════════════════════════════════════════════════════════════════════
+// =============================================================================
 // Chat Information
-// ════════════════════════════════════════════════════════════════════
+// =============================================================================
 
-// BotApiGetChatRequest retrieves chat information.
-message BotApiGetChatRequest {
+// GetChatRequest retrieves chat information.
+message GetChatRequest {
   int64 chat_id = 1;
 }
 
-// BotApiGetChatResponse returns chat details.
-message BotApiGetChatResponse {
+// GetChatResponse returns chat details.
+message GetChatResponse {
   int64 id = 1;
   string type = 2;
   optional string title = 3;
@@ -313,99 +432,99 @@ message BotApiGetChatResponse {
   optional int32 participant_count = 5;
 }
 
-// BotApiGetChatParticipantRequest retrieves a chat participant's status.
-message BotApiGetChatParticipantRequest {
+// GetChatParticipantRequest retrieves a chat participant's status.
+message GetChatParticipantRequest {
   int64 chat_id = 1;
   int64 user_id = 2;
 }
 
-// BotApiGetChatParticipantResponse returns the participant's status and rights.
-message BotApiGetChatParticipantResponse {
+// GetChatParticipantResponse returns the participant's status and rights.
+message GetChatParticipantResponse {
   string status = 1;
   int64 user_id = 2;
   optional ChatAdminScopes admin_scopes = 3;
 }
 
-// BotApiGetChatParticipantCountRequest retrieves the number of participants in a chat.
-message BotApiGetChatParticipantCountRequest {
+// GetChatParticipantCountRequest retrieves the number of participants in a chat.
+message GetChatParticipantCountRequest {
   int64 chat_id = 1;
 }
 
-// BotApiGetChatParticipantCountResponse returns the participant count.
-message BotApiGetChatParticipantCountResponse {
+// GetChatParticipantCountResponse returns the participant count.
+message GetChatParticipantCountResponse {
   int32 count = 1;
 }
 
-// ════════════════════════════════════════════════════════════════════
+// =============================================================================
 // Chat Administration
-// ════════════════════════════════════════════════════════════════════
+// =============================================================================
 
-// BotApiBanChatParticipantRequest bans a user from a chat.
-message BotApiBanChatParticipantRequest {
+// BanChatParticipantRequest bans a user from a chat.
+message BanChatParticipantRequest {
   int64 chat_id = 1;
   int64 user_id = 2;
   optional google.protobuf.Timestamp until_date = 3;
   optional bool revoke_messages = 4;
 }
 
-// BotApiBanChatParticipantResponse indicates success.
-message BotApiBanChatParticipantResponse {
+// BanChatParticipantResponse indicates success.
+message BanChatParticipantResponse {
   bool success = 1;
 }
 
-// BotApiUnbanChatParticipantRequest unbans a user from a chat.
-message BotApiUnbanChatParticipantRequest {
+// UnbanChatParticipantRequest unbans a user from a chat.
+message UnbanChatParticipantRequest {
   int64 chat_id = 1;
   int64 user_id = 2;
   optional bool only_if_banned = 3;
 }
 
-// BotApiUnbanChatParticipantResponse indicates success.
-message BotApiUnbanChatParticipantResponse {
+// UnbanChatParticipantResponse indicates success.
+message UnbanChatParticipantResponse {
   bool success = 1;
 }
 
-// BotApiRestrictChatParticipantRequest restricts a user's permissions in a chat.
-message BotApiRestrictChatParticipantRequest {
+// RestrictChatParticipantRequest restricts a user's permissions in a chat.
+message RestrictChatParticipantRequest {
   int64 chat_id = 1;
   int64 user_id = 2;
-  BotApiChatPermissions permissions = 3;
+  ChatPermissions permissions = 3;
   optional google.protobuf.Timestamp until_date = 4;
 }
 
-// BotApiRestrictChatParticipantResponse indicates success.
-message BotApiRestrictChatParticipantResponse {
+// RestrictChatParticipantResponse indicates success.
+message RestrictChatParticipantResponse {
   bool success = 1;
 }
 
-// BotApiPromoteChatParticipantRequest promotes a user to admin in a chat.
-message BotApiPromoteChatParticipantRequest {
+// PromoteChatParticipantRequest promotes a user to admin in a chat.
+message PromoteChatParticipantRequest {
   int64 chat_id = 1;
   int64 user_id = 2;
   ChatAdminScopes admin_scopes = 3;
 }
 
-// BotApiPromoteChatParticipantResponse indicates success.
-message BotApiPromoteChatParticipantResponse {
+// PromoteChatParticipantResponse indicates success.
+message PromoteChatParticipantResponse {
   bool success = 1;
 }
 
-// BotApiLeaveChatRequest makes the bot leave a chat.
-message BotApiLeaveChatRequest {
+// LeaveChatRequest makes the bot leave a chat.
+message LeaveChatRequest {
   int64 chat_id = 1;
 }
 
-// BotApiLeaveChatResponse indicates success.
-message BotApiLeaveChatResponse {
+// LeaveChatResponse indicates success.
+message LeaveChatResponse {
   bool success = 1;
 }
 
-// ════════════════════════════════════════════════════════════════════
+// =============================================================================
 // Webhook Management
-// ════════════════════════════════════════════════════════════════════
+// =============================================================================
 
-// BotApiSetWebhookRequest configures a webhook for the bot.
-message BotApiSetWebhookRequest {
+// SetWebhookRequest configures a webhook for the bot.
+message SetWebhookRequest {
   // HTTPS URL to receive webhook updates.
   string url = 1;
   // Secret token for X-Tinkle-Bot-Api-Secret-Token header verification (1-256 chars, A-Za-z0-9_-).
@@ -416,24 +535,24 @@ message BotApiSetWebhookRequest {
   optional int32 max_connections = 4;
 }
 
-// BotApiSetWebhookResponse indicates success.
-message BotApiSetWebhookResponse {
+// SetWebhookResponse indicates success.
+message SetWebhookResponse {
   bool success = 1;
 }
 
-// BotApiDeleteWebhookRequest removes the bot's webhook.
-message BotApiDeleteWebhookRequest {}
+// DeleteWebhookRequest removes the bot's webhook.
+message DeleteWebhookRequest {}
 
-// BotApiDeleteWebhookResponse indicates success.
-message BotApiDeleteWebhookResponse {
+// DeleteWebhookResponse indicates success.
+message DeleteWebhookResponse {
   bool success = 1;
 }
 
-// BotApiGetWebhookInfoRequest retrieves the bot's webhook configuration.
-message BotApiGetWebhookInfoRequest {}
+// GetWebhookInfoRequest retrieves the bot's webhook configuration.
+message GetWebhookInfoRequest {}
 
-// BotApiGetWebhookInfoResponse returns the webhook details.
-message BotApiGetWebhookInfoResponse {
+// GetWebhookInfoResponse returns the webhook details.
+message GetWebhookInfoResponse {
   // Configured webhook URL. Empty if no webhook is set.
   string url = 1;
   // Whether a custom certificate was provided.
@@ -450,12 +569,12 @@ message BotApiGetWebhookInfoResponse {
   repeated string allowed_updates = 7;
 }
 
-// ════════════════════════════════════════════════════════════════════
+// =============================================================================
 // Callback Queries
-// ════════════════════════════════════════════════════════════════════
+// =============================================================================
 
-// BotApiAnswerCallbackQueryRequest answers a callback query from an inline keyboard.
-message BotApiAnswerCallbackQueryRequest {
+// AnswerCallbackQueryRequest answers a callback query from an inline keyboard.
+message AnswerCallbackQueryRequest {
   // Unique ID of the callback query to answer.
   string callback_query_id = 1;
   // Text to show to the user (0-200 chars).
@@ -468,27 +587,27 @@ message BotApiAnswerCallbackQueryRequest {
   optional int32 cache_time = 5;
 }
 
-// BotApiAnswerCallbackQueryResponse indicates success.
-message BotApiAnswerCallbackQueryResponse {
+// AnswerCallbackQueryResponse indicates success.
+message AnswerCallbackQueryResponse {
   bool success = 1;
 }
 
-// ════════════════════════════════════════════════════════════════════
+// =============================================================================
 // Shared Types
-// ════════════════════════════════════════════════════════════════════
+// =============================================================================
 
-// BotApiInlineKeyboardMarkup represents an inline keyboard.
-message BotApiInlineKeyboardMarkup {
-  repeated BotApiInlineKeyboardRow inline_keyboard = 1;
+// InlineKeyboardMarkup represents an inline keyboard.
+message InlineKeyboardMarkup {
+  repeated InlineKeyboardRow inline_keyboard = 1;
 }
 
-// BotApiInlineKeyboardRow represents one row of inline keyboard buttons.
-message BotApiInlineKeyboardRow {
-  repeated BotApiInlineKeyboardButton buttons = 1;
+// InlineKeyboardRow represents one row of inline keyboard buttons.
+message InlineKeyboardRow {
+  repeated InlineKeyboardButton buttons = 1;
 }
 
-// BotApiInlineKeyboardButton represents a single inline keyboard button.
-message BotApiInlineKeyboardButton {
+// InlineKeyboardButton represents a single inline keyboard button.
+message InlineKeyboardButton {
   // Button label text.
   string text = 1;
   // URL to open when the button is pressed.
@@ -499,8 +618,8 @@ message BotApiInlineKeyboardButton {
   optional string switch_inline_query = 4;
 }
 
-// BotApiInputMedia represents media to be sent or edited.
-message BotApiInputMedia {
+// InputMedia represents media to be sent or edited.
+message InputMedia {
   // Media type: "photo", "video", "document", "audio", "animation".
   string type = 1;
   // File ID of the media to send.
@@ -511,8 +630,8 @@ message BotApiInputMedia {
   optional string parse_mode = 4;
 }
 
-// BotApiChatPermissions represents user permission flags in a chat.
-message BotApiChatPermissions {
+// ChatPermissions represents user permission flags in a chat.
+message ChatPermissions {
   bool can_send_messages = 1;
   bool can_send_media_messages = 2;
   bool can_send_polls = 3;

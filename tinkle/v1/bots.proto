@@ -63,7 +63,7 @@ service BotsService {
 
   // ToggleUsername activates or deactivates a username associated with the bot.
   // Idempotent: toggling to the current state returns success.
-  rpc ToggleUsername(BotToggleUsernameRequest) returns (BotToggleUsernameResponse);
+  rpc ToggleUsername(ToggleUsernameRequest) returns (ToggleUsernameResponse);
 
   // ReorderUsernames reorders the active usernames of the bot.
   // The provided list must match exactly the set of currently active usernames.
@@ -368,8 +368,8 @@ message GetInfoResponse {
 // Username Management Messages
 // ============================================================================
 
-// BotToggleUsernameRequest activates or deactivates a bot username.
-message BotToggleUsernameRequest {
+// ToggleUsernameRequest activates or deactivates a bot username.
+message ToggleUsernameRequest {
   // Bot to toggle username for. Must be > 0.
   int64 bot_id = 1;
   // Username to toggle. Must be non-empty.
@@ -378,8 +378,8 @@ message BotToggleUsernameRequest {
   bool active = 3;
 }
 
-// BotToggleUsernameResponse contains the operation result.
-message BotToggleUsernameResponse {
+// ToggleUsernameResponse contains the operation result.
+message ToggleUsernameResponse {
   // Whether the operation succeeded.
   bool success = 1;
 }

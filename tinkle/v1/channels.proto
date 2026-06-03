@@ -1,8 +1,7 @@
-// Channels RPC Service - Client-Facing Aggregator Layer
+// Channels RPC Service - Client-Facing Aggregator Layer.
 //
 // Aggregator service for channel management operations.
 // Provides channel lifecycle, membership, configuration, and messaging helpers.
-
 syntax = "proto3";
 
 package tinkle.v1;
@@ -16,10 +15,6 @@ option go_package = "github.com/tinklehq/tinkle-server/proto/tinkle/v1;tinklev1"
 // ChannelsService provides public-facing channel management operations.
 // All RPCs require JWT authentication via the x-authorization header.
 service ChannelsService {
-  // ===========================================================================
-  // Info Retrieval
-  // ===========================================================================
-
   // GetChannels retrieves basic channel info for a list of channel IDs.
   // Missing IDs are silently skipped. Max 100 IDs per request.
   rpc GetChannels(GetChannelsRequest) returns (GetChannelsResponse);
@@ -28,20 +23,12 @@ service ChannelsService {
   // participant counts, and configuration flags.
   rpc GetFullChannel(GetFullChannelRequest) returns (GetFullChannelResponse);
 
-  // ===========================================================================
-  // Creation & Deletion
-  // ===========================================================================
-
   // CreateChannel creates a new channel or broadcast channel.
   // Returns the created Chat object with generated chat_id.
   rpc CreateChannel(CreateChannelRequest) returns (CreateChannelResponse);
 
   // DeleteChannel soft-deletes a channel. Only the channel owner can delete.
   rpc DeleteChannel(DeleteChannelRequest) returns (DeleteChannelResponse);
-
-  // ===========================================================================
-  // User Management & Permissions
-  // ===========================================================================
 
   // GetParticipants lists channel participants with filtering and pagination.
   // Max 200 per page. Supports filtering by role, search query.
@@ -75,33 +62,21 @@ service ChannelsService {
   // Returns lists of successfully invited users and missing invitees.
   rpc InviteToChannel(InviteToChannelRequest) returns (InviteToChannelResponse);
 
-  // ===========================================================================
-  // Visibility
-  // ===========================================================================
-
   // ToggleParticipantsHidden controls whether non-admins can view the participant list.
   rpc ToggleParticipantsHidden(ToggleParticipantsHiddenRequest) returns (ToggleParticipantsHiddenResponse);
 
   // TogglePreHistoryHidden controls whether new members can see messages posted before they joined.
   rpc TogglePreHistoryHidden(TogglePreHistoryHiddenRequest) returns (TogglePreHistoryHiddenResponse);
 
-  // ===========================================================================
-  // Username Management
-  // ===========================================================================
-
   // CheckUsername validates a username candidate for format and availability.
   rpc CheckUsername(CheckUsernameRequest) returns (CheckUsernameResponse);
 
   // UpdateUsername assigns or changes the channel's public username.
   // Returns ALREADY_EXISTS if the username is taken.
-  rpc UpdateUsername(UpdateUsernameRequest) returns (UpdateUsernameResponse);
+  rpc UpdateUsername(ChannelsServiceUpdateUsernameRequest) returns (ChannelsServiceUpdateUsernameResponse);
 
   // ToggleUsername activates or deactivates a channel's existing username.
-  rpc ToggleUsername(ToggleUsernameRequest) returns (ToggleUsernameResponse);
-
-  // ===========================================================================
-  // Configuration
-  // ===========================================================================
+  rpc ToggleUsername(ChannelsServiceToggleUsernameRequest) returns (ChannelsServiceToggleUsernameResponse);
 
   // EditTitle updates the channel title. 1-255 characters.
   rpc EditTitle(EditTitleRequest) returns (EditTitleResponse);
@@ -116,10 +91,6 @@ service ChannelsService {
   // ToggleJoinRequest enables or disables admin approval for new join attempts.
   rpc ToggleJoinRequest(ToggleJoinRequestRequest) returns (ToggleJoinRequestResponse);
 
-  // ===========================================================================
-  // Join Request Approval
-  // ===========================================================================
-
   // GetJoinRequests lists pending join requests for a channel.
   // Only admins can call this. Returns paginated results.
   rpc GetJoinRequests(GetJoinRequestsRequest) returns (GetJoinRequestsResponse);
@@ -130,10 +101,6 @@ service ChannelsService {
 
   // HideAllJoinRequests bulk approves or dismisses all pending join requests.
   rpc HideAllJoinRequests(HideAllJoinRequestsRequest) returns (HideAllJoinRequestsResponse);
-
-  // ===========================================================================
-  // Channel Messaging Helpers
-  // ===========================================================================
 
   // GetChannelMessages retrieves specific messages by ID. Max 100 IDs.
   rpc GetChannelMessages(GetChannelMessagesRequest) returns (GetChannelMessagesResponse);
@@ -156,31 +123,31 @@ service ChannelsService {
 
 // ChannelParticipantFilter filters the participant list query.
 enum ChannelParticipantFilter {
-  // Default filter value (treated as ALL)
+  // Default filter value (treated as ALL).
   CHANNEL_PARTICIPANT_FILTER_UNSPECIFIED = 0;
-  // All participants regardless of role
+  // All participants regardless of role.
   CHANNEL_PARTICIPANT_FILTER_ALL = 1;
-  // Admins and owner only
+  // Admins and owner only.
   CHANNEL_PARTICIPANT_FILTER_ADMINS = 2;
-  // Banned or restricted participants only
+  // Banned or restricted participants only.
   CHANNEL_PARTICIPANT_FILTER_BANNED = 3;
-  // Recently joined participants
+  // Recently joined participants.
   CHANNEL_PARTICIPANT_FILTER_RECENT = 4;
-  // Search participants by name or username
+  // Search participants by name or username.
   CHANNEL_PARTICIPANT_FILTER_SEARCH = 5;
 }
 
 // ChannelParticipantRole indicates a participant's role in the channel.
 enum ChannelParticipantRole {
-  // Default role value
+  // Default role value.
   CHANNEL_PARTICIPANT_ROLE_UNSPECIFIED = 0;
-  // Channel creator with full permissions
+  // Channel creator with full permissions.
   CHANNEL_PARTICIPANT_ROLE_OWNER = 1;
-  // Promoted admin with configurable permissions
+  // Promoted admin with configurable permissions.
   CHANNEL_PARTICIPANT_ROLE_ADMIN = 2;
-  // Regular channel member
+  // Regular channel member.
   CHANNEL_PARTICIPANT_ROLE_MEMBER = 3;
-  // Banned or restricted user
+  // Banned or restricted user.
   CHANNEL_PARTICIPANT_ROLE_BANNED = 4;
 }
 
@@ -190,88 +157,85 @@ enum ChannelParticipantRole {
 
 // ChannelFull is an enriched view of a channel with config and counts.
 message ChannelFull {
-  // Base channel object
+  // Base channel object.
   Chat chat = 1;
-  // Channel description
+  // Channel description.
   string about = 2;
-  // Total number of participants
+  // Total number of participants.
   int32 participants_count = 3;
-  // Number of admins
+  // Number of admins.
   int32 admins_count = 4;
-  // Number of banned/restricted users
+  // Number of banned/restricted users.
   int32 banned_count = 5;
-  // Whether the caller can view the participant list
+  // Whether the caller can view the participant list.
   bool can_view_participants = 6;
-  // Whether the caller can set a public username
+  // Whether the caller can set a public username.
   bool can_set_username = 7;
-  // Slow mode cooldown in seconds (0 = disabled)
+  // Slow mode cooldown in seconds (0 = disabled).
   int32 slow_mode_seconds = 8;
-  // When the caller can next send a message (slow mode)
+  // When the caller can next send a message (slow mode).
   google.protobuf.Timestamp slow_mode_next_send_date = 9;
-  // Whether new joins require admin approval
+  // Whether new joins require admin approval.
   bool join_request_enabled = 10;
-  // Whether message history before join is hidden from new members
+  // Whether message history before join is hidden from new members.
   bool pre_history_hidden = 11;
-  // Whether the participant list is hidden from non-admins
+  // Whether the participant list is hidden from non-admins.
   bool participants_hidden = 12;
 }
 
 // ChannelParticipant represents a user's membership in a channel.
 message ChannelParticipant {
-  // Enriched user object
+  // Enriched user object.
   User user = 1;
-  // Participant role (owner, admin, member, banned)
+  // Participant role (owner, admin, member, banned).
   ChannelParticipantRole role = 2;
-  // Granted admin permissions (populated if role is ADMIN or OWNER)
+  // Granted admin permissions (populated if role is ADMIN or OWNER).
   ChatAdminScopes admin_scopes = 3;
-  // Applied restrictions (populated if role is BANNED)
+  // Applied restrictions (populated if role is BANNED).
   ChatBannedRights banned_rights = 4;
-  // Custom admin rank title (e.g., "Moderator")
+  // Custom admin rank title (e.g., "Moderator").
   string rank = 5;
-  // When the user joined the channel
+  // When the user joined the channel.
   google.protobuf.Timestamp date = 6;
 }
 
-// ChatAdminScopes is defined in common.proto.
-// See: tinkle/v1/common.proto ChatAdminScopes
-
 // ChatBannedRights defines granular restrictions for banned/restricted users.
 message ChatBannedRights {
-  // Can view messages in the channel
+  // Can view messages in the channel.
   bool view_messages = 1;
-  // Can send text messages
+  // Can send text messages.
   bool send_messages = 2;
-  // Can send media (photos, videos, documents)
+  // Can send media (photos, videos, documents).
   bool send_media = 3;
-  // Can send stickers
+  // Can send stickers.
   bool send_stickers = 4;
-  // Can send GIFs
+  // Can send GIFs.
   bool send_gifs = 5;
-  // Can send polls
+  // Can send polls.
   bool send_polls = 6;
-  // Can embed links in messages
+  // Can embed links in messages.
   bool embed_links = 7;
-  // Can invite other users
+  // Can invite other users.
   bool invite_users = 8;
-  // Can change channel info
+  // Can change channel info.
   bool change_info = 9;
-  // Ban expiration timestamp (empty = permanent)
+  // Ban expiration timestamp (empty = permanent).
   google.protobuf.Timestamp until_date = 10;
 }
 
 // InvitedUsers contains the result of an invite operation.
 message InvitedUsers {
-  // Successfully invited users
+  // Successfully invited users.
   repeated User users = 1;
-  // Users who could not be invited
+  // Users who could not be invited.
   repeated MissingInvitee missing_invitees = 2;
 }
 
 // ChannelJoinRequest represents a pending request to join a channel.
 message ChannelJoinRequest {
-  // User who requested to join
+  // User who requested to join.
   User user = 1;
-  // When the request was made
+  // When the request was made.
   google.protobuf.Timestamp date = 2;
 }
 
@@ -281,25 +245,25 @@ message ChannelJoinRequest {
 
 // GetChannelsRequest specifies channel IDs to retrieve.
 message GetChannelsRequest {
-  // Channel IDs to retrieve (max 100)
+  // Channel IDs to retrieve (max 100).
   repeated int64 channel_ids = 1;
 }
 
 // GetChannelsResponse contains the retrieved channels.
 message GetChannelsResponse {
-  // List of matching channel objects
+  // List of matching channel objects.
   repeated Chat chats = 1;
 }
 
 // GetFullChannelRequest specifies a single channel to retrieve in full.
 message GetFullChannelRequest {
-  // Channel ID to retrieve full details for
+  // Channel ID to retrieve full details for.
   int64 channel_id = 1;
 }
 
 // GetFullChannelResponse contains the enriched channel view.
 message GetFullChannelResponse {
-  // Full channel details with config and counts
+  // Full channel details with config and counts.
   ChannelFull full_channel = 1;
 }
 
@@ -309,31 +273,31 @@ message GetFullChannelResponse {
 
 // CreateChannelRequest specifies the new channel parameters.
 message CreateChannelRequest {
-  // Channel title (1-255 characters, required)
+  // Channel title (1-255 characters, required).
   string title = 1;
-  // Channel description (max 1000 characters)
+  // Channel description (max 1000 characters).
   string about = 2;
-  // true for broadcast channel (only admins can post)
+  // true for broadcast channel (only admins can post).
   bool broadcast = 3;
-  // Optional TTL period in seconds for messages
+  // Optional TTL period in seconds for messages.
   optional int32 ttl_period = 4;
 }
 
 // CreateChannelResponse contains the newly created channel.
 message CreateChannelResponse {
-  // The created channel object
+  // The created channel object.
   Chat chat = 1;
 }
 
 // DeleteChannelRequest specifies the channel to delete.
 message DeleteChannelRequest {
-  // Channel ID to soft-delete
+  // Channel ID to soft-delete.
   int64 channel_id = 1;
 }
 
 // DeleteChannelResponse indicates whether the deletion succeeded.
 message DeleteChannelResponse {
-  // true if the channel was deleted
+  // true if the channel was deleted.
   bool success = 1;
 }
 
@@ -343,123 +307,123 @@ message DeleteChannelResponse {
 
 // GetParticipantsRequest specifies participant listing parameters.
 message GetParticipantsRequest {
-  // Channel ID to list participants for
+  // Channel ID to list participants for.
   int64 channel_id = 1;
-  // Filter to apply to the participant list
+  // Filter to apply to the participant list.
   ChannelParticipantFilter filter = 2;
-  // Search query (only used with CHANNEL_PARTICIPANT_FILTER_SEARCH)
+  // Search query (only used with CHANNEL_PARTICIPANT_FILTER_SEARCH).
   optional string query = 3;
-  // Pagination offset (default 0)
+  // Pagination offset (default 0).
   int32 offset = 4;
-  // Page size (1-200, default 20)
+  // Page size (1-200, default 20).
   int32 limit = 5;
 }
 
 // GetParticipantsResponse contains the paginated participant list.
 message GetParticipantsResponse {
-  // List of participants matching the filter
+  // List of participants matching the filter.
   repeated ChannelParticipant participants = 1;
-  // Total count matching the filter
+  // Total count matching the filter.
   int32 count = 2;
 }
 
 // GetParticipantRequest specifies a single participant to retrieve.
 message GetParticipantRequest {
-  // Channel ID
+  // Channel ID.
   int64 channel_id = 1;
-  // User ID of the participant
+  // User ID of the participant.
   int64 user_id = 2;
 }
 
 // GetParticipantResponse contains the participant details.
 message GetParticipantResponse {
-  // The participant with enriched user info
+  // The participant with enriched user info.
   ChannelParticipant participant = 1;
 }
 
 // EditAdminRequest specifies admin rights to grant or revoke.
 message EditAdminRequest {
-  // Channel ID
+  // Channel ID.
   int64 channel_id = 1;
-  // User ID to promote/demote
+  // User ID to promote/demote.
   int64 user_id = 2;
-  // Admin scopes to grant (empty scopes = demote to member)
+  // Admin scopes to grant (empty scopes = demote to member).
   ChatAdminScopes admin_scopes = 3;
-  // Custom admin rank title
+  // Custom admin rank title.
   string rank = 4;
 }
 
 // EditAdminResponse indicates whether the admin edit succeeded.
 message EditAdminResponse {
-  // true if admin rights were updated
+  // true if admin rights were updated.
   bool success = 1;
 }
 
 // EditBannedRequest specifies ban/restriction rights to apply.
 message EditBannedRequest {
-  // Channel ID
+  // Channel ID.
   int64 channel_id = 1;
-  // User ID to ban/restrict
+  // User ID to ban/restrict.
   int64 user_id = 2;
-  // Banned rights to apply (empty rights = unban)
+  // Banned rights to apply (empty rights = unban).
   ChatBannedRights banned_rights = 3;
 }
 
 // EditBannedResponse indicates whether the ban edit succeeded.
 message EditBannedResponse {
-  // true if banned rights were updated
+  // true if banned rights were updated.
   bool success = 1;
 }
 
 // DeleteParticipantHistoryRequest specifies whose history to delete.
 message DeleteParticipantHistoryRequest {
-  // Channel ID
+  // Channel ID.
   int64 channel_id = 1;
-  // User ID whose messages to delete
+  // User ID whose messages to delete.
   int64 user_id = 2;
 }
 
 // DeleteParticipantHistoryResponse contains the deletion result.
 message DeleteParticipantHistoryResponse {
-  // Details of the affected message history
-  AffectedHistory affected = 1;
+  // Details of the affected message history.
+  DeleteHistoryResponse affected = 1;
 }
 
 // JoinChannelRequest specifies the channel to join.
 message JoinChannelRequest {
-  // Channel ID to join
+  // Channel ID to join.
   int64 channel_id = 1;
 }
 
 // JoinChannelResponse contains the joined channel.
 message JoinChannelResponse {
-  // The channel object after joining
+  // The channel object after joining.
   Chat chat = 1;
 }
 
 // LeaveChannelRequest specifies the channel to leave.
 message LeaveChannelRequest {
-  // Channel ID to leave
+  // Channel ID to leave.
   int64 channel_id = 1;
 }
 
 // LeaveChannelResponse indicates whether leaving succeeded.
 message LeaveChannelResponse {
-  // true if the caller left the channel
+  // true if the caller left the channel.
   bool success = 1;
 }
 
 // InviteToChannelRequest specifies users to invite.
 message InviteToChannelRequest {
-  // Channel ID to invite users to
+  // Channel ID to invite users to.
   int64 channel_id = 1;
-  // User IDs to invite (max 100)
+  // User IDs to invite (max 100).
   repeated int64 user_ids = 2;
 }
 
 // InviteToChannelResponse contains the invite results.
 message InviteToChannelResponse {
-  // Invite outcome with success and failure lists
+  // Invite outcome with success and failure lists.
   InvitedUsers invited_users = 1;
 }
 
@@ -469,29 +433,29 @@ message InviteToChannelResponse {
 
 // ToggleParticipantsHiddenRequest specifies visibility toggle.
 message ToggleParticipantsHiddenRequest {
-  // Channel ID
+  // Channel ID.
   int64 channel_id = 1;
-  // true to hide participant list from non-admins
+  // true to hide participant list from non-admins.
   bool enabled = 2;
 }
 
 // ToggleParticipantsHiddenResponse indicates success.
 message ToggleParticipantsHiddenResponse {
-  // true if the toggle was applied
+  // true if the toggle was applied.
   bool success = 1;
 }
 
 // TogglePreHistoryHiddenRequest specifies pre-join history visibility.
 message TogglePreHistoryHiddenRequest {
-  // Channel ID
+  // Channel ID.
   int64 channel_id = 1;
-  // true to hide messages before join from new members
+  // true to hide messages before join from new members.
   bool enabled = 2;
 }
 
 // TogglePreHistoryHiddenResponse indicates success.
 message TogglePreHistoryHiddenResponse {
-  // true if the toggle was applied
+  // true if the toggle was applied.
   bool success = 1;
 }
 
@@ -501,45 +465,45 @@ message TogglePreHistoryHiddenResponse {
 
 // CheckUsernameRequest specifies a username to validate.
 message CheckUsernameRequest {
-  // Channel ID requesting the username
+  // Channel ID requesting the username.
   int64 channel_id = 1;
-  // Username candidate to check
+  // Username candidate to check.
   string username = 2;
 }
 
 // CheckUsernameResponse indicates username availability.
 message CheckUsernameResponse {
-  // true if the username is available and valid
+  // true if the username is available and valid.
   bool available = 1;
 }
 
-// UpdateUsernameRequest specifies the username to assign.
-message UpdateUsernameRequest {
-  // Channel ID
+// ChannelsServiceUpdateUsernameRequest specifies the username to assign.
+message ChannelsServiceUpdateUsernameRequest {
+  // Channel ID.
   int64 channel_id = 1;
-  // Username to assign
+  // Username to assign.
   string username = 2;
 }
 
-// UpdateUsernameResponse indicates success.
-message UpdateUsernameResponse {
-  // true if the username was assigned
+// ChannelsServiceUpdateUsernameResponse indicates success.
+message ChannelsServiceUpdateUsernameResponse {
+  // true if the username was assigned.
   bool success = 1;
 }
 
-// ToggleUsernameRequest specifies username activation toggle.
-message ToggleUsernameRequest {
-  // Channel ID
+// ChannelsServiceToggleUsernameRequest specifies username activation toggle.
+message ChannelsServiceToggleUsernameRequest {
+  // Channel ID.
   int64 channel_id = 1;
-  // Username to toggle
+  // Username to toggle.
   string username = 2;
-  // true to activate, false to deactivate
+  // true to activate, false to deactivate.
   bool active = 3;
 }
 
-// ToggleUsernameResponse indicates success.
-message ToggleUsernameResponse {
-  // true if the toggle was applied
+// ChannelsServiceToggleUsernameResponse indicates success.
+message ChannelsServiceToggleUsernameResponse {
+  // true if the toggle was applied.
   bool success = 1;
 }
 
@@ -549,57 +513,57 @@ message ToggleUsernameResponse {
 
 // EditTitleRequest specifies the new channel title.
 message EditTitleRequest {
-  // Channel ID
+  // Channel ID.
   int64 channel_id = 1;
-  // New title (1-255 characters)
+  // New title (1-255 characters).
   string title = 2;
 }
 
 // EditTitleResponse indicates success.
 message EditTitleResponse {
-  // true if the title was updated
+  // true if the title was updated.
   bool success = 1;
 }
 
 // EditPhotoRequest specifies the new channel photo.
 message EditPhotoRequest {
-  // Channel ID
+  // Channel ID.
   int64 channel_id = 1;
-  // Photo to upload
+  // Photo to upload.
   PhotoInput photo = 2;
 }
 
 // EditPhotoResponse indicates success.
 message EditPhotoResponse {
-  // true if the photo was updated
+  // true if the photo was updated.
   bool success = 1;
 }
 
 // ToggleSlowModeRequest specifies slow mode duration.
 message ToggleSlowModeRequest {
-  // Channel ID
+  // Channel ID.
   int64 channel_id = 1;
-  // Slow mode cooldown in seconds (0 = disable, max 86400)
+  // Slow mode cooldown in seconds (0 = disable, max 86400).
   int32 seconds = 2;
 }
 
 // ToggleSlowModeResponse indicates success.
 message ToggleSlowModeResponse {
-  // true if slow mode was toggled
+  // true if slow mode was toggled.
   bool success = 1;
 }
 
 // ToggleJoinRequestRequest specifies join request approval toggle.
 message ToggleJoinRequestRequest {
-  // Channel ID
+  // Channel ID.
   int64 channel_id = 1;
-  // true to require admin approval for joins
+  // true to require admin approval for joins.
   bool enabled = 2;
 }
 
 // ToggleJoinRequestResponse indicates success.
 message ToggleJoinRequestResponse {
-  // true if the toggle was applied
+  // true if the toggle was applied.
   bool success = 1;
 }
 
@@ -609,49 +573,49 @@ message ToggleJoinRequestResponse {
 
 // GetJoinRequestsRequest specifies listing parameters.
 message GetJoinRequestsRequest {
-  // Channel ID
+  // Channel ID.
   int64 channel_id = 1;
-  // Pagination offset (default 0)
+  // Pagination offset (default 0).
   int32 offset = 2;
-  // Page size (1-200, default 20)
+  // Page size (1-200, default 20).
   int32 limit = 3;
 }
 
 // GetJoinRequestsResponse contains paginated pending requests.
 message GetJoinRequestsResponse {
-  // List of pending join requests
+  // List of pending join requests.
   repeated ChannelJoinRequest requests = 1;
-  // Total number of pending requests
+  // Total number of pending requests.
   int32 count = 2;
 }
 
 // HideJoinRequestRequest specifies a single request to handle.
 message HideJoinRequestRequest {
-  // Channel ID
+  // Channel ID.
   int64 channel_id = 1;
-  // User ID whose request to handle
+  // User ID whose request to handle.
   int64 user_id = 2;
-  // true to approve, false to dismiss
+  // true to approve, false to dismiss.
   bool approved = 3;
 }
 
 // HideJoinRequestResponse indicates success.
 message HideJoinRequestResponse {
-  // true if the request was handled
+  // true if the request was handled.
   bool success = 1;
 }
 
 // HideAllJoinRequestsRequest specifies bulk handling.
 message HideAllJoinRequestsRequest {
-  // Channel ID
+  // Channel ID.
   int64 channel_id = 1;
-  // true to approve all, false to dismiss all
+  // true to approve all, false to dismiss all.
   bool approved = 2;
 }
 
 // HideAllJoinRequestsResponse indicates success.
 message HideAllJoinRequestsResponse {
-  // true if all requests were handled
+  // true if all requests were handled.
   bool success = 1;
 }
 
@@ -661,58 +625,58 @@ message HideAllJoinRequestsResponse {
 
 // GetChannelMessagesRequest specifies messages to retrieve.
 message GetChannelMessagesRequest {
-  // Channel ID
+  // Channel ID.
   int64 channel_id = 1;
-  // Message IDs to retrieve (max 100)
+  // Message IDs to retrieve (max 100).
   repeated int64 message_ids = 2;
 }
 
 // GetChannelMessagesResponse contains the retrieved messages.
 message GetChannelMessagesResponse {
-  // List of matching messages
+  // List of matching messages.
   repeated Message messages = 1;
 }
 
 // ReadChannelHistoryRequest specifies read position.
 message ReadChannelHistoryRequest {
-  // Channel ID
+  // Channel ID.
   int64 channel_id = 1;
-  // Mark all messages up to and including this ID as read
+  // Mark all messages up to and including this ID as read.
   int64 max_id = 2;
 }
 
 // ReadChannelHistoryResponse indicates success.
 message ReadChannelHistoryResponse {
-  // true if read position was updated
+  // true if read position was updated.
   bool success = 1;
 }
 
 // DeleteChannelMessagesRequest specifies messages to delete.
 message DeleteChannelMessagesRequest {
-  // Channel ID
+  // Channel ID.
   int64 channel_id = 1;
-  // Message IDs to delete (max 100)
+  // Message IDs to delete (max 100).
   repeated int64 message_ids = 2;
 }
 
 // DeleteChannelMessagesResponse contains the deletion result.
 message DeleteChannelMessagesResponse {
-  // Details of the affected messages
-  AffectedMessages affected = 1;
+  // Details of the affected messages.
+  DeleteMessagesResponse affected = 1;
 }
 
 // DeleteChannelHistoryRequest specifies history deletion range.
 message DeleteChannelHistoryRequest {
-  // Channel ID
+  // Channel ID.
   int64 channel_id = 1;
-  // Delete all messages up to and including this ID
+  // Delete all messages up to and including this ID.
   int64 max_id = 2;
-  // If true, delete for all participants (admin only)
+  // If true, delete for all participants (admin only).
   optional bool for_everyone = 3;
 }
 
 // DeleteChannelHistoryResponse indicates success.
 message DeleteChannelHistoryResponse {
-  // true if history was deleted
+  // true if history was deleted.
   bool success = 1;
 }
