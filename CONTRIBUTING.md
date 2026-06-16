@@ -108,6 +108,32 @@ first release of a new major) and major version transitions
 (e.g. `2.0.0` when `tinkle/v2/` lands). See `AGENTS.md` →
 "Forcing a specific release version" for when to use it.
 
+## Per-component version bumps (multi-major)
+
+When multiple major versions are active in parallel (e.g. once
+`tinkle/v2/` lands, v1 and v2 both release), you usually want
+to bump one major at a time, not both. Use the `--component`
+mode of the same script to bump a specific package:
+
+```bash
+bin/release-please-bump.sh --component go   --to 1.5.0
+bin/release-please-bump.sh --component go-v2 --to 2.0.0 \
+  --message "feat: tinkle/v2 proto migration"
+```
+
+This edits `.release-please-manifest.json` for the named
+component, commits, and pushes. release-please opens a release
+PR for just that component (when it has releasable conventional
+commits since the last release).
+
+The `--component` mode is also how you bootstrap the **first**
+release of a new major: set the new component to its initial
+version (e.g. `2.0.0`) and push. v1 components are unaffected
+because they're not mentioned in the manifest edit.
+
+See `AGENTS.md` → "Multi-major version maintenance" for the
+end-to-end plan for adding a new major (e.g. v2).
+
 ## Common tasks
 
 | Task | Where to make the change |
