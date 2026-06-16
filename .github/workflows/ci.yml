@@ -125,6 +125,7 @@ jobs:
           go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - name: Regenerate
+        working-directory: ./
         run: buf generate
       - name: Tidy
         run: go mod tidy
@@ -148,6 +149,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: ./rs
+      - name: Set up protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "27.3"
       - name: Build
         run: cargo build --locked
       - name: Test
@@ -191,6 +196,7 @@ jobs:
           mix escript.install hex protobuf --force
           echo "$HOME/.mix/escripts" >> "$GITHUB_PATH"
       - name: Regenerate
+        working-directory: ./
         run: buf generate
       - run: mix local.hex --force
       - run: mix local.rebar --force
