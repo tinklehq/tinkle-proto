@@ -19,10 +19,4 @@ plugins:
     opt:
       - module_prefix=Tinkle.V1
       - elixir_module_name_option_suffix=_pb
-  - local: protoc-gen-grpc-elixir
-    out: elixir/lib
-    opt:
-      - module_prefix=Tinkle.V1
-      - elixir_module_name_suffix=_pb_service
-      - grpc_service_generate_client=true
-      - grpc_service_generate_server=false
+      - plugins=grpc
