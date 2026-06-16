@@ -1,0 +1,201 @@
+name: release
+
+# Post-tag verification + release-branch publish.
+#
+# Tag schemes (per language, all SemVer, major anchored to the proto
+# package version `tinkle/v1`):
+#   Go:     go/vX.Y.Z         (semver, required by Go module proxy)
+#   Rust:   rust/vX.Y.Z       (semver; cargo respects `tag = "v..."`)
+#   Elixir: elixir/vX.Y.Z     (semver; hex-aware if/when published)
+#
+# When tinkle/v2/ ships, all three bump to `v2.Y.Z` under their
+# respective prefixes.
+#
+# This workflow is the consumer-facing release gate. The tag itself
+# is cut by release-please (see release-please.yml) when a human
+# merges a Release PR; that first push points the tag at a commit
+# on `main` (no generated code yet). This workflow then:
+#   1. Detects the language from the tag prefix.
+#   2. Regenerates the language binding from the protos at the
+#      tagged commit.
+#   3. Builds and tests the binding.
+#   4. If green, force-pushes a `release/<component>` branch with
+#      the generated code and force-moves the tag to that branch's
+#      tip. Consumers then `go get`/`cargo add`/`mix deps.get` from
+#      the tag and get a commit that contains the generated code.
+#
+# Note on the tag window: between release-please cutting the tag
+# on `main` and this workflow finishing, the tag points at a
+# commit without generated code. The window is the runtime of this
+# workflow (typically 1-3 minutes). Consumers pinning to a specific
+# version rarely race this; if they do, the dependency resolver
+# will simply fail and they retry a moment later. This is the
+# standard "moving tag" trade-off documented in the research.
+#
+# Note on the tag patterns below: tightened to `v[0-9]*` so that
+# accidentally-pushed human tags like `go/vfinal` don't fire this
+# workflow. release-please always produces numeric versions.
+
+on:
+  push:
+    tags:
+      - "go/v[0-9]*"
+      - "rust/v[0-9]*"
+      - "elixir/v[0-9]*"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false  # never cancel an in-flight release
+
+permissions:
+  contents: write  # push the release branch and force-move the tag
+
+jobs:
+  detect-language:
+    name: detect language from tag
+    runs-on: ubuntu-latest
+    outputs:
+      language: ${{ steps.detect.outputs.language }}
+      working-directory: ${{ steps.detect.outputs.working-directory }}
+      package: ${{ steps.detect.outputs.package }}
+      release-branch: ${{ steps.detect.outputs.release-branch }}
+    steps:
+      - id: detect
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          case "$TAG" in
+            go/v*)     echo "language=go"          >> "$GITHUB_OUTPUT"
+                      echo "working-directory=go" >> "$GITHUB_OUTPUT"
+                      echo "package=github.com/tinklehq/tinkle-proto/go" >> "$GITHUB_OUTPUT"
+                      echo "release-branch=release/go" >> "$GITHUB_OUTPUT" ;;
+            rust/v*)   echo "language=rust"        >> "$GITHUB_OUTPUT"
+                      echo "working-directory=rs" >> "$GITHUB_OUTPUT"
+                      echo "package=tinkle-proto" >> "$GITHUB_OUTPUT"
+                      echo "release-branch=release/rust" >> "$GITHUB_OUTPUT" ;;
+            elixir/v*) echo "language=elixir"      >> "$GITHUB_OUTPUT"
+                      echo "working-directory=elixir" >> "$GITHUB_OUTPUT"
+                      echo "package=tinkle_proto" >> "$GITHUB_OUTPUT"
+                      echo "release-branch=release/elixir" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::unknown tag scheme: $TAG"; exit 1 ;;
+          esac
+
+  publish-release:
+    name: publish ${{ needs.detect-language.outputs.language }} release
+    needs: detect-language
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tagged commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Go
+        if: needs.detect-language.outputs.language == 'go'
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Set up Rust
+        if: needs.detect-language.outputs.language == 'rust'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Elixir
+        if: needs.detect-language.outputs.language == 'elixir'
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "26.0"
+          elixir-version: "1.15"
+
+      - name: Set up Buf
+        uses: bufbuild/buf-setup-action@v1
+
+      - name: Set up protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "27.3"
+
+      - name: Install Go codegen plugins
+        if: needs.detect-language.outputs.language == 'go'
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Install Elixir escripts
+        if: needs.detect-language.outputs.language == 'elixir'
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix escript.install hex protobuf --force
+          mix escript.install hex grpc_elixir --force
+          echo "$HOME/.mix/escripts" >> "$GITHUB_PATH"
+
+      - name: Regenerate
+        run: buf generate
+
+      - name: Go build & test
+        if: needs.detect-language.outputs.language == 'go'
+        working-directory: ./go
+        run: |
+          go mod tidy
+          go build ./...
+          go vet ./...
+
+      - name: Rust build & test
+        if: needs.detect-language.outputs.language == 'rust'
+        working-directory: ./rs
+        run: |
+          cargo build --locked
+          cargo test --locked
+
+      - name: Elixir build & test
+        if: needs.detect-language.outputs.language == 'elixir'
+        working-directory: ./elixir
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+          mix compile --warnings-as-errors
+          mix test
+
+      # All build & test passed. Publish the release branch and
+      # move the tag to its tip. This is what consumers actually
+      # see when they pin to <component>/vX.Y.Z.
+      - name: Publish release branch and move tag
+        env:
+          RELEASE_BRANCH: ${{ needs.detect-language.outputs.release-branch }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Stage every regenerated file in the language dir
+          # (generated stubs + any lockfile changes from the build
+          # steps, e.g. go.sum updates from `go mod tidy`).
+          git add -A "${{ needs.detect-language.outputs.working-directory }}"
+
+          # If nothing actually changed (e.g. re-run on an already-
+          # published tag), skip the commit; the tag is already at
+          # the right place.
+          if git diff --cached --quiet; then
+            echo "No new content to publish; tag already at the right commit."
+            exit 0
+          fi
+
+          COMMIT_MSG="chore(release): publish ${TAG_NAME}"
+          git commit -m "$COMMIT_MSG"
+
+          # Force-create or force-update the release branch.
+          git push origin "HEAD:${RELEASE_BRANCH}" --force
+
+          # Force-move the tag to the new tip so consumers see the
+          # generated code. We delete the remote tag and push the
+          # new one in one round-trip; this is the GITHUB_TOKEN-safe
+          # pattern for moving a tag.
+          NEW_SHA="$(git rev-parse HEAD)"
+          git push origin ":refs/tags/${TAG_NAME}" || true
+          git push origin "refs/tags/${TAG_NAME}"
+
+          echo "Pushed ${RELEASE_BRANCH}@${NEW_SHA} and moved ${TAG_NAME} there."

@@ -1,0 +1,196 @@
+name: ci
+
+# Validates the proto source and the per-language binding metadata
+# (go/go.mod, rs/Cargo.toml, elixir/mix.exs, etc.) for the monorepo.
+#
+# Generated code is NOT committed to main; it's regenerated at
+# release time by release.yml and committed to release/<component>
+# branches. As a result, ci.yml:
+#   1. validates proto source (format, lint, breaking, buf generate),
+#   2. regenerates and builds each language binding,
+#   3. runs each binding's test suite.
+#
+# Steps:
+#   1. proto-checks: buf format/lint/breaking + buf generate
+#   2. Per-language: regenerate + build + test the binding
+#
+# No drift check on main (nothing generated is committed), and no
+# ci-regen job (no fix-up commits to push back to PR branches).
+#
+# "Works on my machine" is killed because the only authoritative
+# regeneration environment is CI — every PR is verified against the
+# CI toolchain's output. Local `buf generate` is a developer
+# convenience only; the build/test jobs in this workflow regenerate
+# from scratch in a clean environment.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  proto-checks:
+    name: buf format, lint, breaking
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "26.0"
+          elixir-version: "1.15"
+
+      - name: Set up Buf
+        uses: bufbuild/buf-setup-action@v1
+
+      - name: Set up protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "27.3"
+
+      - name: Install Go codegen plugins
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Install Elixir escripts
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix escript.install hex protobuf --force
+          mix escript.install hex grpc_elixir --force
+          echo "$HOME/.mix/escripts" >> "$GITHUB_PATH"
+
+      - name: Buf format check
+        run: buf format --diff --exit-code
+
+      - name: Buf lint
+        run: buf lint
+
+      - name: Buf breaking (against base)
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin "${{ github.base_ref }}":"${{ github.base_ref }}"
+          buf breaking --against ".git#branch=${{ github.base_ref }}"
+
+      - name: Generate code (smoke test)
+        run: buf generate
+
+  go-build:
+    name: Build & test Go module
+    needs: proto-checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ./go
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: go/go.sum
+      - name: Set up Buf
+        uses: bufbuild/buf-setup-action@v1
+      - name: Set up protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "27.3"
+      - name: Install Go codegen plugins
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Regenerate
+        run: buf generate
+      - name: Tidy
+        run: go mod tidy
+      - name: Build
+        run: go build ./...
+      - name: Vet
+        run: go vet ./...
+
+  rust-build:
+    name: Build & test Rust crate
+    needs: proto-checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ./rs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ./rs
+      - name: Build
+        run: cargo build --locked
+      - name: Test
+        run: cargo test --locked
+
+  elixir-build:
+    name: Build & test Elixir package
+    needs: proto-checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ./elixir
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "26.0"
+          elixir-version: "1.15"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mix
+            ~/.hex
+            _build
+            deps
+          key: ${{ runner.os }}-mix-${{ hashFiles('elixir/mix.lock', 'elixir/mix.exs') }}
+      - name: Set up Buf
+        uses: bufbuild/buf-setup-action@v1
+      - name: Set up protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "27.3"
+      - name: Install Elixir escripts
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix escript.install hex protobuf --force
+          mix escript.install hex grpc_elixir --force
+          echo "$HOME/.mix/escripts" >> "$GITHUB_PATH"
+      - name: Regenerate
+        run: buf generate
+      - run: mix local.hex --force
+      - run: mix local.rebar --force
+      - run: mix deps.get
+      - name: Compile
+        run: mix compile --warnings-as-errors
+      - name: Test
+        run: mix test

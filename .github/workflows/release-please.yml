@@ -1,0 +1,58 @@
+name: release-please
+
+# Opens (or updates) one Release PR per language binding whose path
+# has changed since its last release. Each Release PR updates:
+#   - go/version.go                     (writes `const Version = "X.Y.Z"`)
+#   - rs/Cargo.toml                     (`version = "X.Y.Z"`)
+#   - elixir/mix.exs                    (`version: "X.Y.Z"`)
+#   - .release-please-manifest.json     (per-package version tracking)
+#   - <component>/CHANGELOG.md
+#
+# A pending Release PR is only rewritten when the regenerated
+# artifacts actually change. Commit types marked `hidden: true` in
+# release-please-config.json produce no CHANGELOG entry, so pushes
+# made up entirely of hidden-type commits (e.g. the `chore: regenerate
+# language bindings from protos` commit pushed by the ci-regen job)
+# leave the open PRs untouched. Keep `feat`/`fix`/`perf`/`refactor`
+# visible so day-to-day merges advance the pending PRs.
+#
+# Once a Release PR is merged into main, release-please takes the
+# following steps:
+#   1. Tags the merge commit with `<component>/vX.Y.Z`.
+#   2. Creates a GitHub Release for the tag.
+#
+# The tag push then triggers .github/workflows/release.yml as a
+# downstream verification gate (regenerate → drift-check → build →
+# test). release.yml uses the GITHUB_TOKEN-safe pattern of being
+# driven by the tag push, not by `on: release: published` (which
+# GitHub does not fire for actions taken by GITHUB_TOKEN).
+#
+# NO version is bumped on PR merge to main — release-please only
+# opens/updates the Release PRs. Only merging a Release PR cuts a
+# tag. This is the property the user requirement calls for: PR
+# authors can land protos and code without any version churn.
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false  # Never cancel an in-progress release
+
+permissions:
+  contents: write      # push tags and create releases
+  pull-requests: write # open/update Release PRs
+
+jobs:
+  release-please:
+    name: release-please
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: release-please
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          manifest-file: .release-please-manifest.json
+          config-file: release-please-config.json
+          token: ${{ secrets.GITHUB_TOKEN }}

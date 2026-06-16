@@ -1,53 +1,99 @@
 # tinkle-proto
 
-Public client gRPC API contracts for **Tinkle Messenger**.
+Source of truth for the `tinkle.v1` gRPC contract and per-language
+binding metadata. This is a monorepo: protos and language binding
+metadata live side by side at the root. **Generated code is not
+committed to `main`** — it is regenerated at release time and
+committed to per-language `release/<component>` branches, which is
+what the git tag points to.
 
-> **Read-only mirror.** This repository is auto-published from
-> [`tinklehq/tinkle-server`](https://github.com/tinklehq/tinkle-server)
-> under `proto/tinkle/`. **Do not edit files here directly** —
-> changes will be overwritten on the next publish.
+The proto files are auto-mirrored from
+[`tinklehq/tinkle-server`](https://github.com/tinklehq/tinkle-server);
+this repo is the source of truth for generation.
 
-## Versioning
+> **Do not edit `tinkle/v1/*.proto` in this repo.** Open a PR in
+> `tinklehq/tinkle-server` instead; the next mirror sync will
+> pull the change here.
 
-API versioning is **path-based** (gRPC / buf convention):
-
-- `tinkle/v1/` — current stable package
-- `tinkle/v2/` — added side-by-side when a breaking change ships
-- Migration is by changing your import path, not by version tag
-
-There are **no SemVer tags** on this repository. Pin consumers to a
-**commit SHA** for reproducibility.
-
-## Layout
+## Architecture
 
 ```
-          tinkle/v1/   # `tinkle.v1` package (gRPC service contracts)
-          buf.yaml     # buf lint/breaking config
+tinklehq/tinkle-proto/                 ← monorepo (this repo)
+├── tinkle/v1/*.proto                  proto source (read-only mirror)
+├── go/                                Go module metadata (go.mod, version.go)
+├── rs/                                Rust crate metadata (Cargo.toml, build.rs)
+├── elixir/                            Elixir package metadata (mix.exs)
+├── buf.yaml + buf.gen.yaml            generation config
+├── release-please-config.json         release-please manifest config
+├── .release-please-manifest.json      per-language version tracking
+└── .github/workflows/
+    ├── ci.yml                         lint, breaking, per-language regen + build + test
+    ├── release-please.yml             on push to main → open/update Release PRs
+    └── release.yml                    on tag push → regen + build + test + push release branch
 ```
 
-## Consumption
+Per-language `release/<component>` branches (force-pushed by
+`release.yml` on each release) hold the regenerated binding for
+that language. The git tag `<component>/vX.Y.Z` points to the tip
+of that branch, so consumers fetch a commit that contains the
+generated code:
 
-### Rust (libtinkle, via `tonic-build`)
-
-```toml
-[dependencies]
-tinkle-proto = { git = "ssh://git@github.com/tinklehq/tinkle-proto.git", rev = "<COMMIT_SHA>" }
+```
+main (proto source + metadata)
+   │
+   ▼  release-please merges a Release PR
+release-please cuts <component>/vX.Y.Z on main
+   │
+   ▼  tag push triggers release.yml
+release.yml:
+   1. regenerate from protos at the tagged commit
+   2. build & test
+   3. force-push release/<component> branch with the generated code
+   4. force-move the tag to that branch's tip
+   │
+   ▼
+Consumers: go get / cargo add / mix deps.get → tag resolves to release/<component>
 ```
 
-### Buf
+## Consuming the bindings
 
-```yaml
-# buf.yaml in your client repo
-deps:
-  - github.com/tinklehq/tinkle-proto:<COMMIT_SHA>
-```
+Versions are managed by **release-please** and follow strict
+**SemVer** with `MAJOR` tracking the proto package version
+(`tinkle/v1` → major=1):
 
-Replace `<COMMIT_SHA>` with the head of `main` (or any prior
-mirror commit you want to pin to).
+| Language | Add to your project |
+|---|---|
+| Go | `go get github.com/tinklehq/tinkle-proto/go@go/vX.Y.Z` |
+| Rust | `tinkle-proto = { git = "https://github.com/tinklehq/tinkle-proto", tag = "rust/vX.Y.Z" }` |
+| Elixir | `{:tinkle_proto, git: "https://github.com/tinklehq/tinkle-proto", tag: "elixir/vX.Y.Z"}` |
+
+Versions are bumped by [Conventional Commits](https://www.conventionalcommits.org/):
+`feat:` → minor, `fix:` → patch, `feat!:` → major. When `tinkle/v2/`
+ships, all three bump to `v2.Y.Z` under their prefixes.
+
+## CI
+
+- **`.github/workflows/ci.yml`** — on every PR + push to `main`:
+  `buf format`, `buf lint`, `buf breaking`, `buf generate` (smoke
+  test), then per-language `regen + build + test` for Go, Rust,
+  and Elixir. No generated code is committed, so no drift check.
+- **`.github/workflows/release-please.yml`** — on push to `main`:
+  release-please opens or updates one Release PR per language.
+  **No version is bumped on PR merge to main** — only when a human
+  merges a Release PR does release-please cut the tag and GitHub
+  Release.
+- **`.github/workflows/release.yml`** — on push of a per-language
+  tag (`go/v*`, `rust/v*`, `elixir/v*`): regenerates from protos,
+  builds + tests, then force-pushes a `release/<component>` branch
+  with the generated code and force-moves the tag to its tip.
+
+There is **no** auto-publish to a registry; consumers depend on
+each language binding via git url + a per-language tag (which
+resolves to a `release/<component>` branch commit).
 
 ## Source
 
-- Source of truth: `proto/tinkle/` in
+- Source of truth for protos:
   [`tinklehq/tinkle-server`](https://github.com/tinklehq/tinkle-server)
-- Publish workflow:
-  [`.github/workflows/proto-publish.yml`](https://github.com/tinklehq/tinkle-server/blob/main/.github/workflows/proto-publish.yml)
+- Mirror workflow:
+  [`tinklehq/tinkle-server` → `tinklehq/tinkle-proto`](https://github.com/tinklehq/tinkle-server/blob/main/.github/workflows/proto-publish.yml)
