@@ -7,14 +7,20 @@ updates:
     commit-message:
       prefix: "ci"
     labels: ["dependencies", "ci"]
-
-  - package-ecosystem: "buf"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    commit-message:
-      prefix: "chore(buf)"
-    labels: ["dependencies", "buf"]
+    # This entry covers updates to:
+    #   - bufbuild/buf-setup-action@v1
+    #   - actions/checkout@v4
+    #   - actions/setup-go@v5
+    #   - dtolnay/rust-toolchain@stable
+    #   - erlef/setup-beam@v1
+    #   - arduino/setup-protoc@v3
+    #   - googleapis/release-please-action@v5
+    #   - github/codeql-action/* (when added)
+    # Note: there is no 'buf' package-ecosystem in dependabot. Our
+    # buf.yaml and buf.gen.yaml are not versioned dependencies; the
+    # buf CLI itself is pinned via bufbuild/buf-setup-action above.
+    # An earlier draft of this file had a 'buf' ecosystem entry,
+    # but that is rejected by dependabot as an unknown ecosystem.
 
   - package-ecosystem: "gomod"
     directory: "/go"
