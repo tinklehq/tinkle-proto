@@ -1,0 +1,18 @@
+# Changelog
+
+## [2.0.0](https://github.com/tinklehq/tinkle-proto/compare/elixir/v1.0.0...elixir/v2.0.0) (2026-06-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* migrate to monorepo with release-please and release-branch model
+
+### Features
+
+* migrate to monorepo with release-please and release-branch model ([793a387](https://github.com/tinklehq/tinkle-proto/commit/793a387119dd9a6aad3818799c190e97b135e7be))
+* monorepo migration with release-please and release-branch model ([34f6f5e](https://github.com/tinklehq/tinkle-proto/commit/34f6f5e2a4f00fc0ef6ca0768c2c91a85913d0cd))
+
+
+### Bug Fixes
+
+* **ci:** drop nonexistent grpc_elixir escript; use plugins=grpc in protoc-gen-elixir ([ccb7eff](https://github.com/tinklehq/tinkle-proto/commit/ccb7eff8e1448f251305c629680494173519f707))
