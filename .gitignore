@@ -1,0 +1,36 @@
+# Build artifacts
+/rs/target
+/elixir/_build
+/elixir/deps
+/elixir/mix.lock
+
+# Generated code is produced at release time and committed to
+# release/<component> branches, not main. Keep it out of main so
+# reviewers see only the proto / metadata diff on PRs.
+/go/tinkle/
+/elixir/lib/tinklev1*.ex
+/elixir/lib/tinkle_*.ex
+
+# Note: rs/Cargo.lock IS committed (this is a library; lockfile
+# makes consumer builds reproducible). Go generated stubs (and the
+# elixir stubs) are NOT committed; they live on release/<component>
+# branches force-pushed by .github/workflows/release.yml at release.
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+.elixir_ls/
+*.swp
+*~
+
+# Local env / secrets
+.env
+.envrc
+*.local
+
+# Buf caches
+.buf-cache/
+
+# Erlang crash dumps
+erl_crash.dump
