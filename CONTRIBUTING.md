@@ -92,16 +92,21 @@ Elixir) — release-please keeps them independent.
 ## Hotfixing a release
 
 To force a specific version (e.g. cutting a `1.2.4` patch release
-without any new commits), push an empty commit with a `Release-As:`
-trailer on `main`:
+without any new commits), use the bootstrap script:
 
 ```bash
-git commit --allow-empty -m "chore: hotfix release" \
-  -m "Release-As: 1.2.4"
+bin/release-please-bump.sh 1.2.4
 ```
 
-Release-please will pick this up on its next run and open a Release
-PR at the requested version.
+The script does the safety checks (on `main`, working tree clean,
+in sync with `origin/main`) and pushes an empty commit with a
+`Release-As: 1.2.4` trailer. release-please picks this up on its
+next run and opens a Release PR at the requested version.
+
+The same script handles bootstrap releases (e.g. `1.0.0` for the
+first release of a new major) and major version transitions
+(e.g. `2.0.0` when `tinkle/v2/` lands). See `AGENTS.md` →
+"Forcing a specific release version" for when to use it.
 
 ## Common tasks
 
