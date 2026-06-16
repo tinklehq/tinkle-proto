@@ -124,6 +124,21 @@ jobs:
           go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
           go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      # buf generate invokes every plugin declared in buf.gen.yaml,
+      # so even though this job is for Go we also need the elixir
+      # escript on PATH. Same for the elixir job needing the Go
+      # plugins. Install all three everywhere; ~15s overhead.
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "26.0"
+          elixir-version: "1.16"
+      - name: Install Elixir escript
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix escript.install hex protobuf --force
+          echo "$HOME/.mix/escripts" >> "$GITHUB_PATH"
       - name: Regenerate
         working-directory: ./
         run: buf generate
@@ -173,6 +188,9 @@ jobs:
         with:
           otp-version: "26.0"
           elixir-version: "1.16"
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
       - uses: actions/cache@v4
         with:
           path: |
@@ -189,6 +207,15 @@ jobs:
         uses: arduino/setup-protoc@v3
         with:
           version: "27.3"
+      # buf generate invokes every plugin declared in buf.gen.yaml,
+      # so even though this job is for Elixir we also need the Go
+      # codegen plugins on PATH. Same for the go job needing the
+      # elixir escript. Install all three everywhere; ~15s overhead.
+      - name: Install Go codegen plugins
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - name: Install Elixir escripts
         run: |
           mix local.hex --force
