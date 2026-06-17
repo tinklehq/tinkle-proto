@@ -12,9 +12,9 @@ repository. Read it fully before making any non-trivial change.
   **`buf.build/tinklecorp/tinkle-proto`** (public). The BSR
   generates and serves **Go** and **Rust** SDKs to consumers; no
   language-specific code lives in this repo.
-- The `.proto` files are mirrored from
-  [`tinklehq/tinkle-server`](https://github.com/tinklehq/tinkle-server).
-  Do not edit them here.
+- The `.proto` files are **maintained directly in this repo** under
+  `tinkle/v1/`. There is no upstream mirror; this is the only place
+  the contract is edited.
 - **No release-please, no per-language tags, no generated code in
   the tree.** Bump a version on the BSR by pushing a new commit;
   consumers update via `go get @latest` or `cargo add --registry buf`.
@@ -23,7 +23,7 @@ repository. Read it fully before making any non-trivial change.
 
 ```
 tinklehq/tinkle-proto (this repo)    proto source + Buf config
-├── tinkle/v1/*.proto                proto source (mirror of tinkle-server)
+├── tinkle/v1/*.proto                proto source (owned here)
 ├── buf.yaml                         v2 single-module workspace
 │                                    name: buf.build/tinklecorp/tinkle-proto
 ├── buf.lock                         generated
@@ -39,6 +39,10 @@ SDKs, version history, generated documentation, and dependency
 resolution. See <https://buf.build/tinklecorp/tinkle-proto> for the
 live state.
 
+The server (`tinklehq/tinkle-server`) and any other microservice
+that talks to the API consume the BSR-published Go SDK — they do
+not edit or mirror `.proto` files from this repo.
+
 ## Consumer dependencies
 
 | Language | Command |
@@ -53,8 +57,12 @@ Versions are `{plugin-version}-{module-commit-timestamp}-{module-commit-id}.{plu
 
 ## Conventions for agents
 
-1. **Do not edit `.proto` files** under `tinkle/v1/`. Edit them in
-   `tinklehq/tinkle-server`; the mirror will sync.
+1. **Edit `.proto` files in place under `tinkle/v1/`.** This repo is
+   the only place the contract is maintained. There is no mirror
+   from `tinklehq/tinkle-server` (or anywhere else) — proto changes
+   land here directly. Keep the Protobuf `package tinkle.v1;` and
+   the `option go_package = "github.com/tinklehq/tinkle-proto/tinkle/v1;tinklev1";`
+   line consistent across all 11 files in the package.
 2. **`buf push` is automatic on merge to `main`.** The `buf-ci.yaml`
    workflow uses `bufbuild/buf-action@v1`; on push to `main` it
    publishes every named module in the workspace to the BSR with
@@ -82,13 +90,14 @@ Versions are `{plugin-version}-{module-commit-timestamp}-{module-commit-id}.{plu
 
 ## When asked to "add a new RPC"
 
-1. Open a PR in `tinklehq/tinkle-server` editing the relevant
-   `tinkle/v1/*.proto`.
-2. Once merged, the mirror syncs the change into
-   `tinklehq/tinkle-proto:main`.
-3. Open a PR here. The buf-ci action will run `format`, `lint`,
-   `breaking`, and post a PR comment summarizing the check results.
-4. Merge to `main`. The action runs `buf push`, which publishes a
+1. Open a PR in this repo (`tinklehq/tinkle-proto`) editing the
+   relevant `tinkle/v1/*.proto`. Add the request/response messages
+   and the method to the appropriate `service` block. Keep the
+   Protobuf `package` and `option go_package` lines as they are.
+2. The buf-ci action on the PR runs `build`, `lint`, `format`, and
+   `breaking` (against the base branch) and posts a summary comment.
+   Fix any findings.
+3. Merge to `main`. The action runs `buf push`, which publishes a
    new commit to the BSR. The BSR serves the updated Go and Rust
    SDKs lazily — consumers pick them up with `go get @latest` or
    the next `cargo add` (Rust SDKs are generated eagerly, so a new
@@ -98,11 +107,10 @@ Versions are `{plugin-version}-{module-commit-timestamp}-{module-commit-id}.{plu
 ## When asked to "fix generated code"
 
 Don't try to fix generated code in this repo — there is no
-generated code in this repo. Fix the proto definition upstream in
-`tinklehq/tinkle-server`. Once the mirror syncs, open a PR here;
-`buf-ci` will publish the new schema to the BSR, and consumers
-will pick up the regenerated SDKs on their next `go get`/`cargo
-add`.
+generated code in this repo. Edit the `.proto` source in
+`tinkle/v1/` directly; the BUF_CI push run on merge will republish
+the schema to the BSR, and consumers will pick up the regenerated
+SDKs on their next `go get`/`cargo add`.
 
 ## Local validation
 
