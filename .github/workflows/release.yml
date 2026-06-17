@@ -42,9 +42,27 @@ on:
       - "go/v[0-9]*"
       - "rust/v[0-9]*"
       - "elixir/v[0-9]*"
+  # The push-tag trigger above is silenced when the tag is created by
+  # `release-please` (which uses GITHUB_TOKEN) — GitHub's recursive-
+  # workflow restriction blocks GITHUB_TOKEN-triggered events from
+  # starting downstream workflows. As a result, the tag is cut and
+  # the GitHub Release is published, but this workflow never runs and
+  # the release/<component> branch is never updated, leaving the tag
+  # pointing at a main commit (no generated code). workflow_dispatch
+  # is the escape hatch: after a release-please run, re-run this
+  # workflow with inputs.tag = the just-cut tag.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to publish (e.g. go/v1.0.1)"
+        required: true
+        type: string
 
 concurrency:
-  group: release-${{ github.ref }}
+  # Group per tag so multiple language releases can run in parallel
+  # without cancelling each other. For workflow_dispatch, github.ref
+  # is the default branch, so we use the dispatched tag instead.
+  group: release-${{ github.event.inputs.tag || github.ref }}
   cancel-in-progress: false  # never cancel an in-flight release
 
 permissions:
@@ -62,7 +80,12 @@ jobs:
     steps:
       - id: detect
         run: |
-          TAG="${GITHUB_REF_NAME}"
+          # When triggered by `push: tags:` the tag is in GITHUB_REF_NAME
+          # (refs/tags/<tag>). When triggered by `workflow_dispatch`
+          # (the GITHUB_TOKEN-silenced manual escape hatch), it's in
+          # the `inputs.tag` parameter.
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "Using tag: $TAG"
           case "$TAG" in
             go/v*)     echo "language=go"          >> "$GITHUB_OUTPUT"
                       echo "working-directory=go" >> "$GITHUB_OUTPUT"
@@ -88,6 +111,10 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          # For workflow_dispatch, check out the user-specified tag
+          # instead of GITHUB_REF (which is the default branch, not
+          # the tag we want to publish from).
+          ref: ${{ github.event.inputs.tag || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Go
@@ -209,7 +236,7 @@ jobs:
       - name: Publish release branch and move tag
         env:
           RELEASE_BRANCH: ${{ needs.detect-language.outputs.release-branch }}
-          TAG_NAME: ${{ github.ref_name }}
+          TAG_NAME: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
           git config user.name  "github-actions[bot]"
