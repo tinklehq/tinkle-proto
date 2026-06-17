@@ -8,8 +8,7 @@
 # release/<component> branches, not main. Keep it out of main so
 # reviewers see only the proto / metadata diff on PRs.
 /go/tinkle/
-/elixir/lib/tinklev1*.ex
-/elixir/lib/tinkle_*.ex
+/elixir/lib/tinkle/
 
 # Note: rs/Cargo.lock IS committed (this is a library; lockfile
 # makes consumer builds reproducible). Go generated stubs (and the

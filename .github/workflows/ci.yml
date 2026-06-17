@@ -96,6 +96,21 @@ jobs:
       - name: Generate code (smoke test)
         run: buf generate
 
+      # protoc-gen-elixir emits generated files at
+      #   <out>/<source-relative-dir>/<package-as-path>/<file>.pb.ex
+      # which doubles the path when source-dir matches the package
+      # name (our case: source `tinkle/v1/` + package `tinkle.v1`).
+      # Collapse the doubled directory so the final layout is
+      #   elixir/lib/tinkle/v1/<file>.pb.ex
+      # matching the Go and Rust layouts. Idempotent: skips itself
+      # if protoc-gen-elixir's output structure changes.
+      - name: Flatten elixir generated output
+        run: |
+          if [ -d elixir/lib/tinkle/v1/tinkle ]; then
+            mv elixir/lib/tinkle/v1/tinkle/v1/*.pb.ex elixir/lib/tinkle/v1/
+            rmdir elixir/lib/tinkle/v1/tinkle/v1 elixir/lib/tinkle/v1/tinkle
+          fi
+
   go-build:
     name: Build & test Go module
     needs: proto-checks
@@ -142,6 +157,12 @@ jobs:
       - name: Regenerate
         working-directory: ./
         run: buf generate
+      - name: Flatten elixir generated output
+        run: |
+          if [ -d elixir/lib/tinkle/v1/tinkle ]; then
+            mv elixir/lib/tinkle/v1/tinkle/v1/*.pb.ex elixir/lib/tinkle/v1/
+            rmdir elixir/lib/tinkle/v1/tinkle/v1 elixir/lib/tinkle/v1/tinkle
+          fi
       - name: Tidy
         run: go mod tidy
       - name: Build
@@ -225,6 +246,12 @@ jobs:
       - name: Regenerate
         working-directory: ./
         run: buf generate
+      - name: Flatten elixir generated output
+        run: |
+          if [ -d elixir/lib/tinkle/v1/tinkle ]; then
+            mv elixir/lib/tinkle/v1/tinkle/v1/*.pb.ex elixir/lib/tinkle/v1/
+            rmdir elixir/lib/tinkle/v1/tinkle/v1 elixir/lib/tinkle/v1/tinkle
+          fi
       - run: mix local.hex --force
       - run: mix local.rebar --force
       - run: mix deps.get

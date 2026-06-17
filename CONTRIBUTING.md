@@ -31,7 +31,14 @@ buf format -d
 buf lint
 buf breaking --against ".git#branch=origin/main"
 buf generate
-# Generated files (go/tinkle/, elixir/lib/tinklev1*.ex) are not
+# protoc-gen-elixir emits a doubled output path (see "Flatten
+# elixir generated output" in .github/workflows/ci.yml); collapse
+# it to match the Go and Rust layout. Idempotent.
+if [ -d elixir/lib/tinkle/v1/tinkle ]; then
+  mv elixir/lib/tinkle/v1/tinkle/v1/*.pb.ex elixir/lib/tinkle/v1/
+  rmdir elixir/lib/tinkle/v1/tinkle/v1 elixir/lib/tinkle/v1/tinkle
+fi
+# Generated files (go/tinkle/, elixir/lib/tinkle/) are not
 # committed; they're fine to leave in your working tree or clean
 # up with `git clean -fdx` if you prefer.
 (cd go && go mod tidy && go build ./... && go vet ./...)
@@ -92,21 +99,19 @@ Elixir) — release-please keeps them independent.
 ## Hotfixing a release
 
 To force a specific version (e.g. cutting a `1.2.4` patch release
-without any new commits), use the bootstrap script:
+without any new commits), push an empty commit on `main` with a
+`Release-As: 1.2.4` trailer and let `release-please` open a Release
+PR at the requested version:
 
 ```bash
-bin/release-please-bump.sh 1.2.4
+git commit --allow-empty -m "chore: release 1.2.4" -m "Release-As: 1.2.4"
+git push origin HEAD
 ```
 
-The script does the safety checks (on `main`, working tree clean,
-in sync with `origin/main`) and pushes an empty commit with a
-`Release-As: 1.2.4` trailer. release-please picks this up on its
-next run and opens a Release PR at the requested version.
-
-The same script handles bootstrap releases (e.g. `1.0.0` for the
+The same pattern handles bootstrap releases (e.g. `1.0.0` for the
 first release of a new major) and major version transitions
 (e.g. `2.0.0`). See `AGENTS.md` → "Forcing a specific release
-version" for when to use it.
+version" for the pre-flight checklist and when to use it.
 
 ## Common tasks
 
