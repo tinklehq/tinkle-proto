@@ -19,7 +19,7 @@ defmodule TinkleProto.MixProject do
   defp deps do
     [
       {:protobuf, "~> 0.17"},
-      {:grpc, "~> 0.11"}
+      {:grpc, "~> 1.0"}
     ]
   end
 
