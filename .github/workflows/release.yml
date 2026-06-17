@@ -90,11 +90,13 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: "1.25"
-          cache: false
+      - name: Install Go
+        run: |
+          set -euo pipefail
+          curl -fsSL https://go.dev/dl/go1.25.0.linux-amd64.tar.gz -o /tmp/go.tgz
+          tar -C /usr/local -xzf /tmp/go.tgz
+          echo "/usr/local/go/bin" >> "$GITHUB_PATH"
+          /usr/local/go/bin/go version
 
       - name: Set up Rust
         if: needs.detect-language.outputs.language == 'rust'
@@ -121,9 +123,9 @@ jobs:
       # on PATH for every release job.
       - name: Install Go codegen plugins
         run: |
-          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
-          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          /usr/local/go/bin/go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
+          /usr/local/go/bin/go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
 
       - name: Install Elixir escripts
         run: |
