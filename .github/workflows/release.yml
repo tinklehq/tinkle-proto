@@ -142,6 +142,21 @@ jobs:
       - name: Regenerate
         run: buf generate
 
+      # protoc-gen-elixir emits generated files at
+      #   <out>/<source-relative-dir>/<package-as-path>/<file>.pb.ex
+      # which doubles the path when source-dir matches the package
+      # name (our case: source `tinkle/v1/` + package `tinkle.v1`).
+      # Collapse the doubled directory so the final layout is
+      #   elixir/lib/tinkle/v1/<file>.pb.ex
+      # matching the Go and Rust layouts. Idempotent: skips itself
+      # if protoc-gen-elixir's output structure changes.
+      - name: Flatten elixir generated output
+        run: |
+          if [ -d elixir/lib/tinkle/v1/tinkle ]; then
+            mv elixir/lib/tinkle/v1/tinkle/v1/*.pb.ex elixir/lib/tinkle/v1/
+            rmdir elixir/lib/tinkle/v1/tinkle/v1 elixir/lib/tinkle/v1/tinkle
+          fi
+
       - name: Go build & test
         if: needs.detect-language.outputs.language == 'go'
         working-directory: ./go
@@ -166,6 +181,27 @@ jobs:
           mix deps.get
           mix compile --warnings-as-errors
           mix test
+
+      # Strip build artifacts before the publish step. The
+      # `git add -A -f` below uses `-f` to pick up gitignored
+      # generated code; without this cleanup, cargo's `rs/target/`
+      # (containing the full dependency closure as .rlib/.rmeta/.so
+      # and the tonic_prost_build `out/tinkle.v1.rs`) and mix's
+      # `elixir/_build`, `elixir/deps`, `elixir/mix.lock` would all
+      # be force-committed to the release branch and baked into
+      # the tag. None of that is consumed downstream — cargo and
+      # mix both rebuild it at consumer build time — so it's just
+      # repo-hygiene pollution.
+      - name: Clean Rust build artifacts
+        if: needs.detect-language.outputs.language == 'rust'
+        working-directory: ./rs
+        run: cargo clean
+
+      - name: Clean Elixir build artifacts
+        if: needs.detect-language.outputs.language == 'elixir'
+        working-directory: ./elixir
+        run: |
+          rm -rf _build deps mix.lock
 
       # All build & test passed. Publish the release branch and
       # move the tag to its tip. This is what consumers actually
