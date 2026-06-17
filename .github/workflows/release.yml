@@ -94,6 +94,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: "1.25"
+          cache: false
 
       - name: Set up Rust
         if: needs.detect-language.outputs.language == 'rust'
