@@ -195,8 +195,11 @@ jobs:
           COMMIT_MSG="chore(release): publish ${TAG_NAME}"
           git commit -m "$COMMIT_MSG"
 
-          # Force-create or force-update the release branch.
-          git push origin "HEAD:${RELEASE_BRANCH}" --force
+          # Force-create or force-update the release branch. Use
+          # the full refs/heads/ prefix so git doesn't try to
+          # interpret branch names containing slashes (e.g.
+          # `release/elixir`) as something else.
+          git push origin "HEAD:refs/heads/${RELEASE_BRANCH}" --force
 
           # Force-move the tag to the new tip so consumers see the
           # generated code. We delete the remote tag and push the
