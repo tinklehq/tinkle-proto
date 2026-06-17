@@ -4,7 +4,7 @@ defmodule TinkleProto.MixProject do
   def project do
     [
       app: :tinkle_proto,
-      version: "1.0.0",
+      version: "1.0.1",
       elixir: "~> 1.15",
       elixirc_paths: ["lib"],
       deps: deps(),
