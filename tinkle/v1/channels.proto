@@ -10,7 +10,7 @@ import "google/protobuf/timestamp.proto";
 import "tinkle/v1/common.proto";
 import "tinkle/v1/messages.proto";
 
-option go_package = "github.com/tinklehq/tinkle-proto/tinkle/v1;tinklev1";
+option go_package = "github.com/tinklehq/tinkle-proto/tinkle/v1;tinkle";
 
 // ChannelsService provides public-facing channel management operations.
 // All RPCs require JWT authentication via the x-authorization header.

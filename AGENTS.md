@@ -61,7 +61,7 @@ Versions are `{plugin-version}-{module-commit-timestamp}-{module-commit-id}.{plu
    the only place the contract is maintained. There is no mirror
    from `tinklehq/tinkle-server` (or anywhere else) — proto changes
    land here directly. Keep the Protobuf `package tinkle.v1;` and
-   the `option go_package = "github.com/tinklehq/tinkle-proto/tinkle/v1;tinklev1";`
+   the `option go_package = "github.com/tinklehq/tinkle-proto/tinkle/v1;tinkle";`
    line consistent across all 11 files in the package.
 2. **`buf push` is automatic on merge to `main`.** The `buf-ci.yaml`
    workflow uses `bufbuild/buf-action@v1`; on push to `main` it
