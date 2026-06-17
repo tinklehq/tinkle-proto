@@ -182,7 +182,10 @@ jobs:
           # Stage every regenerated file in the language dir
           # (generated stubs + any lockfile changes from the build
           # steps, e.g. go.sum updates from `go mod tidy`).
-          git add -A "${{ needs.detect-language.outputs.working-directory }}"
+          # -f forces inclusion of generated files that are
+          # gitignored on main but should be committed on the
+          # release branch.
+          git add -A -f "${{ needs.detect-language.outputs.working-directory }}"
 
           # If nothing actually changed (e.g. re-run on an already-
           # published tag), skip the commit; the tag is already at
