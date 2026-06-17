@@ -7,7 +7,7 @@ package tinkle.v1;
 import "google/protobuf/timestamp.proto";
 import "tinkle/v1/common.proto";
 
-option go_package = "github.com/tinklehq/tinkle-server/proto/tinkle/v1;tinklev1";
+option go_package = "github.com/tinklehq/tinkle-proto/tinkle/v1;tinklev1";
 
 // BotApiService is the external-facing gRPC service that bot developers call.
 // This controller is stateless — it validates the bot token, then forwards to internal BotService.
