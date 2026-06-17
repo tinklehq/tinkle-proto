@@ -94,10 +94,13 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsSL https://go.dev/dl/go1.25.0.linux-amd64.tar.gz -o /tmp/go.tgz
-          rm -rf /usr/local/go
-          tar -C /usr/local -xzf /tmp/go.tgz
-          echo "/usr/local/go/bin" >> "$GITHUB_PATH"
-          /usr/local/go/bin/go version
+          mkdir -p "$HOME/.local"
+          tar -C "$HOME/.local" -xzf /tmp/go.tgz
+          export GOROOT="$HOME/.local/go"
+          export PATH="$HOME/.local/go/bin:$PATH"
+          echo "GOROOT=$HOME/.local/go" >> "$GITHUB_ENV"
+          echo "$HOME/.local/go/bin" >> "$GITHUB_PATH"
+          go version
 
       - name: Set up Rust
         if: needs.detect-language.outputs.language == 'rust'
@@ -124,8 +127,9 @@ jobs:
       # on PATH for every release job.
       - name: Install Go codegen plugins
         run: |
-          /usr/local/go/bin/go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
-          /usr/local/go/bin/go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
+          export PATH="$HOME/.local/go/bin:$PATH"
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
           echo "$HOME/go/bin" >> "$GITHUB_PATH"
 
       - name: Install Elixir escripts
