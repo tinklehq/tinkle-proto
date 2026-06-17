@@ -5,7 +5,7 @@ package tinkle.v1;
 import "google/protobuf/struct.proto";
 import "tinkle/v1/common.proto";
 
-option go_package = "github.com/tinklehq/tinkle-server/proto/tinkle/v1;tinklev1";
+option go_package = "github.com/tinklehq/tinkle-proto/tinkle/v1;tinklev1";
 
 // BotsService provides public-facing bot management operations.
 // All RPCs require JWT authentication via the Authorization header.
