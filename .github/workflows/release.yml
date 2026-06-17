@@ -91,7 +91,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Go
-        if: needs.detect-language.outputs.language == 'go'
         uses: actions/setup-go@v6
         with:
           go-version: "1.25"
@@ -101,7 +100,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Set up Elixir
-        if: needs.detect-language.outputs.language == 'elixir'
         uses: erlef/setup-beam@v1
         with:
           otp-version: "26.0"
@@ -117,15 +115,16 @@ jobs:
         with:
           version: "27.3"
 
+      # buf generate invokes every plugin in buf.gen.yaml regardless
+      # of which language we're publishing, so all 3 plugins must be
+      # on PATH for every release job.
       - name: Install Go codegen plugins
-        if: needs.detect-language.outputs.language == 'go'
         run: |
           go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
           go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Install Elixir escripts
-        if: needs.detect-language.outputs.language == 'elixir'
         run: |
           mix local.hex --force
           mix local.rebar --force
