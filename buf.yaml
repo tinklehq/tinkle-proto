@@ -1,4 +1,5 @@
 version: v2
+name: buf.build/tinklecorp/tinkle-proto
 lint:
   use:
     - STANDARD
