@@ -24,9 +24,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let proto_strs: Vec<&str> = protos.iter().map(|p| p.to_str().unwrap()).collect();
     let proto_includes = [proto_root.to_str().unwrap()];
 
-    tonic_build::configure()
+    // tonic-build 0.13+ renamed the crate from `tonic_build` to
+    // `tonic_prost_build`. The function-based API is gone; use the
+    // configure().compile_protos() pattern.
+    tonic_prost_build::configure()
         .build_server(false)
-        .build_transport(false)
         .compile_protos(&proto_strs, &proto_includes)?;
 
     println!("cargo:rerun-if-changed={}", proto_dir.display());
