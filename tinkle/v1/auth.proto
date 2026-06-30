@@ -17,13 +17,9 @@ service AuthService {
   // Returns the delivery method and request tracking information.
   rpc SendCode(SendCodeRequest) returns (SendCodeResponse);
 
-  // SignIn verifies code and returns user data with auth tokens.
+  // SignIn verifies code and returns user data with a session token.
   // Creates a new user account if the phone number is not registered.
   rpc SignIn(SignInRequest) returns (SignInResponse);
-
-  // RenewToken refreshes tokens using a valid refresh token.
-  // Returns updated user data with new tokens.
-  rpc RenewToken(RenewTokenRequest) returns (RenewTokenResponse);
 }
 
 // =============================================================================
@@ -60,41 +56,15 @@ message SignInRequest {
   string code = 2;
 }
 
-// SignInResponse contains user information and auth tokens.
-// Aggregated from identity-service (tokens) and user-service (user data).
+// SignInResponse contains user information and an opaque session token.
+// Aggregated from identity-service (session token) and user-service (user data).
 message SignInResponse {
   // User information (Empty if user is not active, UserData if active).
   User user = 1;
-  // JWT ID token containing user claims.
-  string id_token = 2;
-  // Refresh token for obtaining new access tokens.
-  string refresh_token = 3;
-  // Token type (always "Bearer").
-  string token_type = 4;
+  // Opaque, long-lived session token. Persisted on the client device and
+  // presented on every authenticated request. The server is stateless and
+  // validates the token directly (no refresh, renewal, or rotation flow).
+  string session_token = 2;
   // True if this sign-in created a new user account.
-  bool is_new_user = 5;
-}
-
-// =============================================================================
-// RenewToken RPC
-// =============================================================================
-
-// RenewTokenRequest contains the refresh token for renewal.
-message RenewTokenRequest {
-  // Current refresh token.
-  string refresh_token = 1;
-}
-
-// RenewTokenResponse returns updated user data with new tokens.
-message RenewTokenResponse {
-  // User information (Empty if user is not active, UserData if active).
-  User user = 1;
-  // JWT ID token containing user claims.
-  string id_token = 2;
-  // Refresh token for obtaining new access tokens.
-  string refresh_token = 3;
-  // Token type (always "Bearer").
-  string token_type = 4;
-  // True if this renewal resulted from a new account.
-  bool is_new_user = 5;
+  bool is_new_user = 3;
 }
