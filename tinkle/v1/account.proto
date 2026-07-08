@@ -14,8 +14,8 @@ option go_package = "github.com/tinklehq/tinkle-proto/tinkle/v1;tinklev1";
 
 // AccountService provides authenticated user account operations.
 //
-// All methods require a valid JWT token with user context.
-// User ID is extracted from the token claims, not passed in requests.
+// All methods require an active Ory Kratos session with user context.
+// User ID is derived from the session, not passed in requests.
 service AccountService {
   // RegisterPush registers a device for push notifications.
   // Returns the registered device on success.
@@ -77,15 +77,15 @@ service AccountService {
   rpc SetContentSetting(SetContentSettingRequest) returns (SetContentSettingResponse);
 
   // Logout invalidates the current session.
-  // The session ID is extracted from the JWT token claims.
+  // The session ID is taken from the active Ory Kratos session.
   rpc Logout(LogoutRequest) returns (LogoutResponse);
 
   // RevokeSession invalidates a specific session by its ID.
-  // The user ID is extracted from the JWT token claims.
+  // The caller's user identity is taken from the active Ory Kratos session.
   rpc RevokeSession(RevokeSessionRequest) returns (RevokeSessionResponse);
 
   // RevokeSessions invalidates all sessions for the current user.
-  // The user ID is extracted from the JWT token claims.
+  // The user ID is taken from the active Ory Kratos session.
   rpc RevokeSessions(RevokeSessionsRequest) returns (RevokeSessionsResponse);
 }
 
@@ -383,7 +383,7 @@ message SetContentSettingResponse {
 // Session Management RPCs
 // =============================================================================
 
-// LogoutRequest is empty - session ID is extracted from the JWT token claims.
+// LogoutRequest is empty - session ID is taken from the active Ory Kratos session.
 message LogoutRequest {}
 
 // LogoutResponse confirms the current session was invalidated.
@@ -404,7 +404,7 @@ message RevokeSessionResponse {
   bool revoked = 1;
 }
 
-// RevokeSessionsRequest is empty - revokes all sessions for the user from the JWT claims.
+// RevokeSessionsRequest is empty - revokes all sessions for the user identified by the active Ory Kratos session.
 message RevokeSessionsRequest {}
 
 // RevokeSessionsResponse confirms all sessions were invalidated.
