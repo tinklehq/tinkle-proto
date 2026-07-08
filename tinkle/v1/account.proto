@@ -87,6 +87,10 @@ service AccountService {
   // RevokeSessions invalidates all sessions for the current user.
   // The user ID is taken from the active Ory Kratos session.
   rpc RevokeSessions(RevokeSessionsRequest) returns (RevokeSessionsResponse);
+
+  // GetSessions lists all active Ory Kratos sessions for the current user.
+  // The user ID is taken from the active Ory Kratos session.
+  rpc GetSessions(GetSessionsRequest) returns (GetSessionsResponse);
 }
 
 // PushDevice represents a registered push notification device.
@@ -411,4 +415,39 @@ message RevokeSessionsRequest {}
 message RevokeSessionsResponse {
   // True if all sessions were invalidated.
   bool revoked = 1;
+}
+
+// Session represents one active Ory Kratos session for a user.
+message Session {
+  // Session identifier.
+  string id = 1;
+  // Device model reported by the client (e.g. "iPhone 15 Pro").
+  string device_model = 2;
+  // Client platform (e.g. "ios", "android", "web").
+  string platform = 3;
+  // Operating system version reported by the client.
+  string system_version = 4;
+  // Application (client) version reported by the client.
+  string app_version = 5;
+  // Unix epoch timestamp (seconds) when the session was created.
+  int64 created_date = 6;
+  // Unix epoch timestamp (seconds) of the last activity on the session.
+  int64 active_date = 7;
+  // IP address of the session, used to derive country and region.
+  string ip = 8;
+  // Country code derived from ip (e.g. "US"), empty if unknown.
+  string country = 9;
+  // Region derived from ip (e.g. "CA"), empty if unknown.
+  string region = 10;
+  // True if this is the session that issued the current request.
+  bool current = 11;
+}
+
+// GetSessionsRequest is empty - lists all sessions for the user from the active Ory Kratos session.
+message GetSessionsRequest {}
+
+// GetSessionsResponse returns all active sessions for the user.
+message GetSessionsResponse {
+  // All active sessions for the user.
+  repeated Session sessions = 1;
 }
