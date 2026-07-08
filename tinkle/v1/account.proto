@@ -75,6 +75,18 @@ service AccountService {
   // SetContentSetting toggles content scope settings.
   // For each scope: if enabled, disables it; if disabled, enables it.
   rpc SetContentSetting(SetContentSettingRequest) returns (SetContentSettingResponse);
+
+  // Logout invalidates the current session.
+  // The session ID is extracted from the JWT token claims.
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+
+  // RevokeSession invalidates a specific session by its ID.
+  // The user ID is extracted from the JWT token claims.
+  rpc RevokeSession(RevokeSessionRequest) returns (RevokeSessionResponse);
+
+  // RevokeSessions invalidates all sessions for the current user.
+  // The user ID is extracted from the JWT token claims.
+  rpc RevokeSessions(RevokeSessionsRequest) returns (RevokeSessionsResponse);
 }
 
 // PushDevice represents a registered push notification device.
@@ -365,4 +377,38 @@ message SetContentSettingRequest {
 message SetContentSettingResponse {
   // The updated content settings.
   ContentSettings settings = 1;
+}
+
+// =============================================================================
+// Session Management RPCs
+// =============================================================================
+
+// LogoutRequest is empty - session ID is extracted from the JWT token claims.
+message LogoutRequest {}
+
+// LogoutResponse confirms the current session was invalidated.
+message LogoutResponse {
+  // True if the current session was invalidated.
+  bool logged_out = 1;
+}
+
+// RevokeSessionRequest identifies the session to invalidate.
+message RevokeSessionRequest {
+  // Session ID to revoke.
+  string session_id = 1;
+}
+
+// RevokeSessionResponse confirms the session was invalidated.
+message RevokeSessionResponse {
+  // True if the session was invalidated.
+  bool revoked = 1;
+}
+
+// RevokeSessionsRequest is empty - revokes all sessions for the user from the JWT claims.
+message RevokeSessionsRequest {}
+
+// RevokeSessionsResponse confirms all sessions were invalidated.
+message RevokeSessionsResponse {
+  // True if all sessions were invalidated.
+  bool revoked = 1;
 }
